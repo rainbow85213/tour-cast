@@ -26,9 +26,12 @@ src/
 │   └── spotController.ts     # 반경 내 숙박 검색 (Haversine raw query)
 ├── routes/
 │   ├── touristSpots.ts       # GET /tourist-spots 목록·상세
-│   └── spots.ts              # GET /api/spots/:id/with-accommodations
+│   ├── spots.ts              # GET /api/spots/:id/with-accommodations
+│   └── accommodations.ts     # GET /api/accommodations 목록·상세
 ├── services/
 │   └── apiClient.ts          # 공공데이터포털 Axios 인스턴스 (재시도 로직 포함)
+├── utils/
+│   └── weatherGrid.ts        # WGS84 → 기상청 격자 좌표 변환 (LCC DFS)
 └── jobs/
     └── syncTourData.ts       # 관광 데이터 동기화 Job
 prisma/
@@ -135,7 +138,7 @@ node -e "
       "address": "전라남도 신안군 흑산면 가거도길 38-2",
       "mapX": 125.126,
       "mapY": 34.052,
-      "image": "http://..."
+      "image": "https://..."
     }
   ]
 }
@@ -168,6 +171,37 @@ node -e "
 ```
 
 > Haversine 공식을 PostgreSQL raw query로 계산하여 DB에서 직접 필터링합니다.
+
+### 숙박
+
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/api/accommodations` | 숙박 목록 조회 |
+| GET | `/api/accommodations/:id` | 숙박 단건 조회 |
+
+쿼리 파라미터: `page` (기본값 1), `limit` (기본값 20, 최대 100)
+
+## 유틸리티
+
+### 기상청 격자 좌표 변환 (`src/utils/weatherGrid.ts`)
+
+WGS84 위경도를 기상청 단기예보 API에서 사용하는 격자 좌표(X, Y)로 변환합니다.
+기상청 LCC DFS(Lambert Conformal Conic) 투영 공식 기반입니다.
+
+```typescript
+import { latLonToGrid } from './utils/weatherGrid';
+
+const { x, y } = latLonToGrid(37.5683, 126.9778); // 서울
+// → { x: 60, y: 127 }
+```
+
+| 도시 | 위도 | 경도 | 격자 X | 격자 Y |
+|------|------|------|--------|--------|
+| 서울 | 37.5683 | 126.9778 | 60 | 127 |
+| 부산 | 35.1796 | 129.0756 | 98 | 76 |
+| 대전 | 36.3504 | 127.3845 | 67 | 100 |
+| 광주 | 35.1595 | 126.8526 | 58 | 74 |
+| 제주 | 33.4890 | 126.4983 | 52 | 38 |
 
 ## 환경 변수
 
