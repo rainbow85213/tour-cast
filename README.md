@@ -18,17 +18,22 @@ Node.js + TypeScript + Express 기반의 관광 정보 REST API 서버입니다.
 
 ```
 src/
-├── index.ts              # 서버 진입점 (Express 앱, /ping 헬스체크)
-├── db.ts                 # pg 커넥션 풀 (레거시, Prisma로 대체)
-├── prisma.ts             # Prisma Client 싱글톤
-├── generated/prisma/     # Prisma 자동 생성 클라이언트
+├── index.ts                  # 서버 진입점 (Express 앱, /ping 헬스체크)
+├── db.ts                     # pg 커넥션 풀 (레거시, Prisma로 대체)
+├── prisma.ts                 # Prisma Client 싱글톤
+├── generated/prisma/         # Prisma 자동 생성 클라이언트
+├── controllers/
+│   └── spotController.ts     # 반경 내 숙박 검색 (Haversine raw query)
+├── routes/
+│   ├── touristSpots.ts       # GET /tourist-spots 목록·상세
+│   └── spots.ts              # GET /api/spots/:id/with-accommodations
 ├── services/
-│   └── apiClient.ts      # 공공데이터포털 Axios 인스턴스 (재시도 로직 포함)
+│   └── apiClient.ts          # 공공데이터포털 Axios 인스턴스 (재시도 로직 포함)
 └── jobs/
-    └── syncTourData.ts   # 관광 데이터 동기화 Job
+    └── syncTourData.ts       # 관광 데이터 동기화 Job
 prisma/
-├── schema.prisma         # DB 모델 정의
-└── migrations/           # 마이그레이션 히스토리
+├── schema.prisma             # DB 모델 정의
+└── migrations/               # 마이그레이션 히스토리
 ```
 
 ## 데이터베이스 모델
@@ -93,9 +98,76 @@ node -e "
 
 ## API 엔드포인트
 
+### 헬스체크
+
 | Method | Path | 설명 |
 |--------|------|------|
-| GET | `/ping` | 헬스체크 |
+| GET | `/ping` | 서버 상태 확인 |
+
+### 관광지
+
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/tourist-spots` | 관광지 목록 조회 |
+| GET | `/tourist-spots/:id` | 관광지 단건 조회 |
+| GET | `/api/spots/:id/with-accommodations` | 관광지 기준 반경 5km 내 숙박 조회 |
+
+#### GET /tourist-spots 쿼리 파라미터
+
+| 파라미터 | 기본값 | 설명 |
+|---------|-------|------|
+| `page` | `1` | 페이지 번호 |
+| `limit` | `20` | 페이지당 항목 수 (최대 100) |
+
+#### GET /tourist-spots 응답 예시
+
+```json
+{
+  "total": 100,
+  "page": 1,
+  "limit": 20,
+  "totalPages": 5,
+  "items": [
+    {
+      "id": 1,
+      "contentId": "127480",
+      "title": "가거도",
+      "address": "전라남도 신안군 흑산면 가거도길 38-2",
+      "mapX": 125.126,
+      "mapY": 34.052,
+      "image": "http://..."
+    }
+  ]
+}
+```
+
+#### GET /api/spots/:id/with-accommodations 응답 예시
+
+```json
+{
+  "spot": {
+    "id": 3,
+    "title": "가고파 꼬부랑길 벽화마을",
+    "address": "경상남도 창원시 마산합포구 ...",
+    "mapX": 128.569,
+    "mapY": 35.207
+  },
+  "nearbyAccommodations": [
+    {
+      "id": 42,
+      "contentId": "2012345",
+      "title": "게스트하우스 리좀",
+      "address": "경상남도 창원시 ...",
+      "mapX": 128.571,
+      "mapY": 35.209,
+      "tel": "055-000-0000",
+      "distanceKm": 0.39
+    }
+  ]
+}
+```
+
+> Haversine 공식을 PostgreSQL raw query로 계산하여 DB에서 직접 필터링합니다.
 
 ## 환경 변수
 
