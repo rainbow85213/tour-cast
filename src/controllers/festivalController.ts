@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../prisma';
 import { latLonToGrid } from '../utils/weatherGrid';
 import { weatherApiClient, getBaseDateTime } from '../services/weatherApiClient';
+import redis from '../services/redisClient';
 
 // 기상청 하늘상태 (SKY) 코드
 const SKY_STATUS: Record<string, string> = {
@@ -57,8 +58,25 @@ async function fetchWeather(nx: number, ny: number): Promise<WeatherResult | nul
   }
 }
 
+const CACHE_KEY = 'cache:festivals:active';
+const CACHE_TTL = 600; // 10분
+
 // GET /api/festivals/active
 export async function getActiveFestivals(req: Request, res: Response): Promise<void> {
+  // 캐시 조회
+  try {
+    const cached = await redis.get(CACHE_KEY);
+    if (cached !== null) {
+      res.setHeader('X-Cache', 'HIT');
+      res.json(JSON.parse(cached));
+      return;
+    }
+  } catch {
+    // fail-open: Redis 오류 시 무시하고 계속 진행
+  }
+
+  res.setHeader('X-Cache', 'MISS');
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -89,9 +107,18 @@ export async function getActiveFestivals(req: Request, res: Response): Promise<v
     weather: weatherResults[i],
   }));
 
-  res.json({
+  const responseBody = {
     total: result.length,
     baseDateTime: getBaseDateTime(),
     items: result,
-  });
+  };
+
+  // 캐시 저장
+  try {
+    await redis.set(CACHE_KEY, JSON.stringify(responseBody), 'EX', CACHE_TTL);
+  } catch {
+    // ignore
+  }
+
+  res.json(responseBody);
 }

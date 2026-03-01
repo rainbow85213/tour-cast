@@ -11,6 +11,7 @@ Node.js + TypeScript + Express 기반의 관광 정보 REST API 서버입니다.
 | 프레임워크 | Express 4 |
 | ORM | Prisma 7 |
 | DB | PostgreSQL 16 |
+| 캐시 | Redis 7 |
 | HTTP 클라이언트 | Axios + axios-retry |
 | 컨테이너 | Docker / Docker Compose |
 
@@ -32,7 +33,10 @@ src/
 │   └── festivals.ts          # GET /api/festivals/active
 ├── services/
 │   ├── apiClient.ts          # 공공데이터포털 Axios 인스턴스 (재시도 로직 포함)
-│   └── weatherApiClient.ts   # 기상청 Axios 인스턴스 + baseDateTime 계산
+│   ├── weatherApiClient.ts   # 기상청 Axios 인스턴스 + baseDateTime 계산
+│   └── redisClient.ts        # ioredis 싱글톤 클라이언트
+├── middlewares/
+│   └── cache.ts              # Redis 캐시 미들웨어 팩토리 (X-Cache 헤더 포함)
 ├── utils/
 │   └── weatherGrid.ts        # WGS84 → 기상청 격자 좌표 변환 (LCC DFS)
 └── jobs/
@@ -79,6 +83,8 @@ cp .env.example .env
 ```bash
 docker compose up --build
 ```
+
+Docker Compose는 PostgreSQL, Redis, App 컨테이너를 함께 구동합니다. Redis는 `redis:7-alpine` 이미지를 사용하며 앱은 `redis://redis:6379`로 연결됩니다.
 
 ### 로컬 개발 서버
 
@@ -257,3 +263,4 @@ const { x, y } = latLonToGrid(37.5683, 126.9778); // 서울
 | `DB_USER` | DB 사용자 |
 | `DB_PASSWORD` | DB 비밀번호 |
 | `DATABASE_URL` | Prisma 연결 URL |
+| `REDIS_URL` | Redis 연결 URL (기본값: `redis://localhost:6379`) |

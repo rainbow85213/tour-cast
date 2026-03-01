@@ -6,6 +6,7 @@ import touristSpotsRouter from './routes/touristSpots';
 import spotsRouter from './routes/spots';
 import accommodationsRouter from './routes/accommodations';
 import festivalsRouter from './routes/festivals';
+import redis from './services/redisClient';
 
 dotenv.config();
 
@@ -23,6 +24,15 @@ app.use('/tourist-spots', touristSpotsRouter);
 app.use('/api/spots', spotsRouter);
 app.use('/api/accommodations', accommodationsRouter);
 app.use('/api/festivals', festivalsRouter);
+
+async function shutdown(signal: string) {
+  console.log(`[${signal}] Shutting down...`);
+  await redis.quit();
+  process.exit(0);
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 async function bootstrap() {
   await testConnection();
