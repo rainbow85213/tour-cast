@@ -7,7 +7,36 @@ const router = Router();
 const SIX_HOURS = 6 * 60 * 60;
 const TWENTY_FOUR_HOURS = 24 * 60 * 60;
 
-// GET /api/accommodations
+/**
+ * @openapi
+ * /api/accommodations:
+ *   get:
+ *     tags: [Accommodation]
+ *     summary: 숙박 목록 조회
+ *     description: 숙박 시설을 페이징하여 반환합니다. 결과는 6시간 동안 Redis에 캐싱됩니다.
+ *     parameters:
+ *       - $ref: '#/components/parameters/PageParam'
+ *       - $ref: '#/components/parameters/LimitParam'
+ *     responses:
+ *       200:
+ *         description: 숙박 목록
+ *         headers:
+ *           X-Cache:
+ *             schema:
+ *               type: string
+ *               enum: [HIT, MISS]
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/Pagination'
+ *                 - type: object
+ *                   properties:
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/AccommodationSummary'
+ */
 router.get(
   '/',
   cacheMiddleware(
@@ -51,7 +80,45 @@ router.get(
   },
 );
 
-// GET /api/accommodations/:id
+/**
+ * @openapi
+ * /api/accommodations/{id}:
+ *   get:
+ *     tags: [Accommodation]
+ *     summary: 숙박 단건 조회
+ *     description: ID로 숙박 시설 상세 정보를 조회합니다. 결과는 24시간 동안 Redis에 캐싱됩니다.
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: 숙박 ID
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: 숙박 상세
+ *         headers:
+ *           X-Cache:
+ *             schema:
+ *               type: string
+ *               enum: [HIT, MISS]
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccommodationSummary'
+ *       400:
+ *         description: 유효하지 않은 ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error400'
+ *       404:
+ *         description: 숙박 시설 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error404'
+ */
 router.get(
   '/:id',
   cacheMiddleware((req) => `cache:accommodation:${req.params.id}`, TWENTY_FOUR_HOURS),
