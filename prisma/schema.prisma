@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model TouristSpot {
+  id        Int      @id @default(autoincrement())
+  contentId String   @unique
+  title     String
+  address   String?
+  mapX      Float?
+  mapY      Float?
+  image     String?
+  overview  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tourist_spots")
+}
+
+model Accommodation {
+  id        Int      @id @default(autoincrement())
+  contentId String   @unique
+  title     String
+  address   String?
+  mapX      Float?
+  mapY      Float?
+  tel       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("accommodations")
+}
+
+model Festival {
+  id        Int      @id @default(autoincrement())
+  contentId String   @unique
+  title     String
+  address   String?
+  mapX      Float?
+  mapY      Float?
+  startDate DateTime?
+  endDate   DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("festivals")
+}
+
+model Campsite {
+  id        Int      @id @default(autoincrement())
+  contentId String   @unique
+  title     String
+  address   String?
+  mapX      Float?
+  mapY      Float?
+  induty    String?
+  resveUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("campsites")
+}
