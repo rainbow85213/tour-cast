@@ -1,5 +1,7 @@
 # TourCast API Server
 
+[![CI / CD](https://github.com/rainbow85213/tour-cast/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/rainbow85213/tour-cast/actions/workflows/ci-cd.yml)
+
 Node.js + TypeScript + Express 기반의 관광 정보 REST API 서버입니다.
 
 ## 기술 스택
