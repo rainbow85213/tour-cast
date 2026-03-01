@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { testConnection } from './db';
 import touristSpotsRouter from './routes/touristSpots';
 import spotsRouter from './routes/spots';
+import accommodationsRouter from './routes/accommodations';
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.get('/ping', (_req: Request, res: Response) => {
 
 app.use('/tourist-spots', touristSpotsRouter);
 app.use('/api/spots', spotsRouter);
+app.use('/api/accommodations', accommodationsRouter);
 
 async function bootstrap() {
   await testConnection();
