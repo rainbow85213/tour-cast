@@ -2,6 +2,8 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { testConnection } from './db';
+import touristSpotsRouter from './routes/touristSpots';
+import spotsRouter from './routes/spots';
 
 dotenv.config();
 
@@ -14,6 +16,9 @@ app.use(express.json());
 app.get('/ping', (_req: Request, res: Response) => {
   res.json({ status: 'ok', message: 'pong', timestamp: new Date().toISOString() });
 });
+
+app.use('/tourist-spots', touristSpotsRouter);
+app.use('/api/spots', spotsRouter);
 
 async function bootstrap() {
   await testConnection();
