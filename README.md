@@ -121,11 +121,11 @@ node -e "
 
 서버 실행 후 아래 경로에서 API 문서를 확인할 수 있습니다.
 
-| 경로 | 설명 |
-|------|------|
-| `GET /api-docs` | Swagger UI — 인터랙티브 테스트 |
-| `GET /api-reference` | Scalar — 읽기 전용 참조 문서 |
-| `GET /api-docs/swagger.json` | OpenAPI 3.0 JSON 스펙 |
+| 경로 | URL | 설명 |
+|------|-----|------|
+| `GET /api-docs` | http://localhost:3000/api-docs | Swagger UI — 인터랙티브 테스트 |
+| `GET /api-reference` | http://localhost:3000/api-reference | Scalar — 읽기 전용 참조 문서 |
+| `GET /api-docs/swagger.json` | http://localhost:3000/api-docs/swagger.json | OpenAPI 3.0 JSON 스펙 |
 
 ### 헬스체크
 
