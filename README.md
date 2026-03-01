@@ -13,6 +13,7 @@ Node.js + TypeScript + Express 기반의 관광 정보 REST API 서버입니다.
 | DB | PostgreSQL 16 |
 | 캐시 | Redis 7 |
 | HTTP 클라이언트 | Axios + axios-retry |
+| API 문서 | Swagger UI / Scalar |
 | 컨테이너 | Docker / Docker Compose |
 
 ## 프로젝트 구조
@@ -33,6 +34,8 @@ src/
 │   ├── accommodations.ts     # GET /api/accommodations 목록·상세
 │   ├── festivals.ts          # GET /api/festivals/active
 │   └── campsites.ts          # GET /api/campsites
+├── config/
+│   └── swagger.ts            # OpenAPI 3.0 스펙 정의 (swagger-jsdoc)
 ├── services/
 │   ├── apiClient.ts          # 공공데이터포털 Axios 인스턴스 (재시도 로직 포함)
 │   ├── weatherApiClient.ts   # 기상청 Axios 인스턴스 + baseDateTime 계산
@@ -114,11 +117,22 @@ node -e "
 
 ## API 엔드포인트
 
+### API 문서
+
+서버 실행 후 아래 경로에서 API 문서를 확인할 수 있습니다.
+
+| 경로 | 설명 |
+|------|------|
+| `GET /api-docs` | Swagger UI — 인터랙티브 테스트 |
+| `GET /api-reference` | Scalar — 읽기 전용 참조 문서 |
+| `GET /api-docs/swagger.json` | OpenAPI 3.0 JSON 스펙 |
+
 ### 헬스체크
 
 | Method | Path | 설명 |
 |--------|------|------|
-| GET | `/ping` | 서버 상태 확인 |
+| GET | `/ping` | 서버 상태 확인 (pong) |
+| GET | `/api/health` | 서비스 헬스체크 (uptime 포함) |
 
 ### 관광지
 
