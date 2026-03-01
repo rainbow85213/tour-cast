@@ -40,6 +40,7 @@ src/
 prisma/
 ├── schema.prisma             # DB 모델 정의
 └── migrations/               # 마이그레이션 히스토리
+prisma.config.ts              # Prisma 7 설정 파일 (schema 경로, datasource URL)
 ```
 
 ## 데이터베이스 모델
