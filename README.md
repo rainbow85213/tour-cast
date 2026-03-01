@@ -23,13 +23,16 @@ src/
 ├── prisma.ts                 # Prisma Client 싱글톤
 ├── generated/prisma/         # Prisma 자동 생성 클라이언트
 ├── controllers/
-│   └── spotController.ts     # 반경 내 숙박 검색 (Haversine raw query)
+│   ├── spotController.ts     # 반경 내 숙박 검색 (Haversine raw query)
+│   └── festivalController.ts # 진행중 축제 조회 + 기상청 날씨 병렬 병합
 ├── routes/
 │   ├── touristSpots.ts       # GET /tourist-spots 목록·상세
 │   ├── spots.ts              # GET /api/spots/:id/with-accommodations
-│   └── accommodations.ts     # GET /api/accommodations 목록·상세
+│   ├── accommodations.ts     # GET /api/accommodations 목록·상세
+│   └── festivals.ts          # GET /api/festivals/active
 ├── services/
-│   └── apiClient.ts          # 공공데이터포털 Axios 인스턴스 (재시도 로직 포함)
+│   ├── apiClient.ts          # 공공데이터포털 Axios 인스턴스 (재시도 로직 포함)
+│   └── weatherApiClient.ts   # 기상청 Axios 인스턴스 + baseDateTime 계산
 ├── utils/
 │   └── weatherGrid.ts        # WGS84 → 기상청 격자 좌표 변환 (LCC DFS)
 └── jobs/
@@ -56,6 +59,7 @@ prisma/
 |-----------|---------|------|
 | `tourApiClient` | `apis.data.go.kr/B551011/KorService2` | 관광지·숙박·축제 |
 | `campApiClient` | `apis.data.go.kr/B551011/GoCamping` | 캠핑장 |
+| `weatherApiClient` | `apis.data.go.kr/1360000/VilageFcstInfoService_2.0` | 기상청 초단기실황 |
 
 - 모든 요청에 `MobileOS=ETC`, `MobileApp=AppTest`, `_type=json` 기본 파라미터 포함
 - 네트워크 오류 및 5xx, 429 응답 시 최대 3회 자동 재시도 (1s / 2s / 3s)
@@ -181,6 +185,41 @@ node -e "
 
 쿼리 파라미터: `page` (기본값 1), `limit` (기본값 20, 최대 100)
 
+### 축제
+
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/api/festivals/active` | 진행중·7일내 시작 축제 조회 (날씨 포함) |
+
+#### GET /api/festivals/active 응답 예시
+
+```json
+{
+  "total": 3,
+  "baseDateTime": { "baseDate": "20260301", "baseTime": "2200" },
+  "items": [
+    {
+      "id": 1,
+      "contentId": "3113671",
+      "title": "가락몰 빵축제",
+      "address": "서울특별시 송파구 ...",
+      "mapX": 127.110,
+      "mapY": 37.496,
+      "startDate": "2026-03-01T00:00:00.000Z",
+      "endDate": "2026-03-03T00:00:00.000Z",
+      "weather": {
+        "temp": "5.2°C",
+        "status": "맑음"
+      }
+    }
+  ]
+}
+```
+
+- 오늘 기준 **진행 중**(`startDate ≤ 오늘 ≤ endDate`) 또는 **7일 이내 시작** 축제를 최대 10건 반환
+- 기상청 초단기실황 API를 `Promise.all`로 **병렬 호출**
+- 기상청 API 실패 시 해당 축제의 `weather` 필드는 `null` 반환 (전체 응답 실패 없음)
+
 ## 유틸리티
 
 ### 기상청 격자 좌표 변환 (`src/utils/weatherGrid.ts`)
@@ -210,6 +249,7 @@ const { x, y } = latLonToGrid(37.5683, 126.9778); // 서울
 | `PORT` | 서버 포트 (기본값: 3000) |
 | `TOUR_API_KEY` | 한국관광공사 TourAPI 인증키 (Encoding) |
 | `CAMP_API_KEY` | 한국관광공사 GoCamping API 인증키 (Encoding) |
+| `WEATHER_API_KEY` | 기상청 단기예보 API 인증키 (Encoding) |
 | `DB_HOST` | PostgreSQL 호스트 |
 | `DB_PORT` | PostgreSQL 포트 |
 | `DB_NAME` | DB 이름 |
