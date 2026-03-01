@@ -25,12 +25,14 @@ src/
 ├── generated/prisma/         # Prisma 자동 생성 클라이언트
 ├── controllers/
 │   ├── spotController.ts     # 반경 내 숙박 검색 (Haversine raw query)
-│   └── festivalController.ts # 진행중 축제 조회 + 기상청 날씨 병렬 병합
+│   ├── festivalController.ts # 진행중 축제 조회 + 기상청 날씨 병렬 병합
+│   └── campController.ts     # 캠핑장 목록 조회 + isAvailable 시뮬레이션 + bookingUrl 생성
 ├── routes/
 │   ├── touristSpots.ts       # GET /tourist-spots 목록·상세
 │   ├── spots.ts              # GET /api/spots/:id/with-accommodations
 │   ├── accommodations.ts     # GET /api/accommodations 목록·상세
-│   └── festivals.ts          # GET /api/festivals/active
+│   ├── festivals.ts          # GET /api/festivals/active
+│   └── campsites.ts          # GET /api/campsites
 ├── services/
 │   ├── apiClient.ts          # 공공데이터포털 Axios 인스턴스 (재시도 로직 포함)
 │   ├── weatherApiClient.ts   # 기상청 Axios 인스턴스 + baseDateTime 계산
@@ -226,6 +228,54 @@ node -e "
 - 오늘 기준 **진행 중**(`startDate ≤ 오늘 ≤ endDate`) 또는 **7일 이내 시작** 축제를 최대 10건 반환
 - 기상청 초단기실황 API를 `Promise.all`로 **병렬 호출**
 - 기상청 API 실패 시 해당 축제의 `weather` 필드는 `null` 반환 (전체 응답 실패 없음)
+
+### 캠핑장
+
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/api/campsites` | 캠핑장 목록 조회 |
+
+쿼리 파라미터: `page` (기본값 1), `limit` (기본값 20, 최대 100)
+
+#### GET /api/campsites 응답 예시
+
+```json
+{
+  "total": 500,
+  "page": 1,
+  "limit": 20,
+  "totalPages": 25,
+  "items": [
+    {
+      "id": 1,
+      "contentId": "100001",
+      "title": "설악산 국립공원 캠핑장",
+      "address": "강원도 속초시 ...",
+      "mapX": 128.465,
+      "mapY": 38.119,
+      "induty": "일반야영장",
+      "resveUrl": "https://www.reservation.go.kr/...",
+      "isAvailable": true,
+      "bookingUrl": "https://www.reservation.go.kr/..."
+    },
+    {
+      "id": 2,
+      "contentId": "100002",
+      "title": "지리산 캠핑장",
+      "address": "전라남도 구례군 ...",
+      "mapX": 127.593,
+      "mapY": 35.337,
+      "induty": "카라반",
+      "resveUrl": null,
+      "isAvailable": false,
+      "bookingUrl": "https://search.naver.com/search.naver?query=%EC%A7%80%EB%A6%AC%EC%82%B0+%EC%BA%A0%ED%95%91%EC%9E%A5+%EC%98%88%EC%95%BD"
+    }
+  ]
+}
+```
+
+- `isAvailable`: 실시간 예약 가능 여부 시뮬레이션 (요청마다 랜덤 생성)
+- `bookingUrl`: DB에 `resveUrl`이 있으면 그대로 사용, 없으면 `캠핑장이름 예약`으로 네이버 검색 URL 자동 생성
 
 ## 유틸리티
 

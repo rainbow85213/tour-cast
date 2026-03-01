@@ -6,6 +6,7 @@ import touristSpotsRouter from './routes/touristSpots';
 import spotsRouter from './routes/spots';
 import accommodationsRouter from './routes/accommodations';
 import festivalsRouter from './routes/festivals';
+import campsitesRouter from './routes/campsites';
 import redis from './services/redisClient';
 
 dotenv.config();
@@ -24,6 +25,7 @@ app.use('/tourist-spots', touristSpotsRouter);
 app.use('/api/spots', spotsRouter);
 app.use('/api/accommodations', accommodationsRouter);
 app.use('/api/festivals', festivalsRouter);
+app.use('/api/campsites', campsitesRouter);
 
 async function shutdown(signal: string) {
   console.log(`[${signal}] Shutting down...`);
