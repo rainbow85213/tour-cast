@@ -12,6 +12,8 @@ Node.js + TypeScript + Express 기반의 관광 정보 REST API 서버입니다.
 | 언어 | TypeScript 5 |
 | 프레임워크 | Express 4 |
 | ORM | Prisma 7 |
+| 검증 | Joi |
+| 테스트 | Jest + ts-jest + Supertest |
 | DB | PostgreSQL 16 |
 | 캐시 | Redis 7 |
 | HTTP 클라이언트 | Axios + axios-retry |
@@ -28,14 +30,16 @@ src/
 ├── generated/prisma/         # Prisma 자동 생성 클라이언트
 ├── controllers/
 │   ├── spotController.ts     # 반경 내 숙박 검색 (Haversine raw query)
-│   ├── festivalController.ts # 진행중 축제 조회 + 기상청 날씨 병렬 병합
-│   └── campController.ts     # 캠핑장 목록 조회 + isAvailable 시뮬레이션 + bookingUrl 생성
+│   ├── festivalController.ts  # 진행중 축제 조회 + 기상청 날씨 병렬 병합
+│   ├── campController.ts      # 캠핑장 목록 조회 + isAvailable 시뮬레이션 + bookingUrl 생성
+│   └── scheduleController.ts  # 여행 일정 CRUD + Joi 검증
 ├── routes/
 │   ├── touristSpots.ts       # GET /tourist-spots 목록·상세
 │   ├── spots.ts              # GET /api/spots/:id/with-accommodations
 │   ├── accommodations.ts     # GET /api/accommodations 목록·상세
 │   ├── festivals.ts          # GET /api/festivals/active
-│   └── campsites.ts          # GET /api/campsites
+│   ├── campsites.ts          # GET /api/campsites
+│   └── schedule.ts           # POST/GET/PUT/DELETE /api/schedule
 ├── config/
 │   └── swagger.ts            # OpenAPI 3.0 스펙 정의 (swagger-jsdoc)
 ├── services/
@@ -46,6 +50,8 @@ src/
 │   └── cache.ts              # Redis 캐시 미들웨어 팩토리 (X-Cache 헤더 포함)
 ├── utils/
 │   └── weatherGrid.ts        # WGS84 → 기상청 격자 좌표 변환 (LCC DFS)
+├── __tests__/
+│   └── schedule.test.ts      # Schedule API 테스트 (15개 케이스, Prisma 모킹)
 └── jobs/
     └── syncTourData.ts       # 관광 데이터 동기화 Job
 prisma/
@@ -62,8 +68,9 @@ prisma.config.ts              # Prisma 7 설정 파일 (schema 경로, datasourc
 | `Accommodation` | `accommodations` | 숙박 (contentTypeId=32) |
 | `Festival` | `festivals` | 축제 (contentTypeId=15) |
 | `Campsite` | `campsites` | 캠핑장 (GoCamping API) |
+| `Schedule` | `schedules` | 여행 일정 (사용자 생성 데이터) |
 
-모든 모델은 `contentId`(공공데이터 ID)를 unique key로 사용하며 `createdAt`, `updatedAt`을 포함합니다.
+공공데이터 모델은 `contentId`를 unique key로 사용합니다. `Schedule`은 `cuid()` PK를 사용하며 `userId`, `scheduledAt` 인덱스를 포함합니다.
 
 ## 외부 API
 
@@ -292,6 +299,66 @@ node -e "
 
 - `isAvailable`: 실시간 예약 가능 여부 시뮬레이션 (요청마다 랜덤 생성)
 - `bookingUrl`: DB에 `resveUrl`이 있으면 그대로 사용, 없으면 `캠핑장이름 예약`으로 네이버 검색 URL 자동 생성
+
+### 여행 일정
+
+| Method | Path | 설명 |
+|--------|------|------|
+| POST | `/api/schedule` | 일정 생성 |
+| GET | `/api/schedule?userId=` | 일정 목록 조회 |
+| GET | `/api/schedule/:id` | 일정 단건 조회 |
+| PUT | `/api/schedule/:id` | 일정 수정 |
+| DELETE | `/api/schedule/:id` | 일정 삭제 |
+
+쿼리 파라미터: `userId` (필수), `completed` (true/false 필터), `page`, `limit`
+
+#### POST /api/schedule 요청 예시
+
+```json
+{
+  "userId": "user_abc",
+  "title": "경복궁 방문",
+  "description": "오전 관람 예정",
+  "scheduledAt": "2026-04-01T10:00:00Z",
+  "location": {
+    "name": "경복궁",
+    "address": "서울특별시 종로구 사직로 161",
+    "lat": 37.5796,
+    "lng": 126.9770,
+    "category": "관광지"
+  },
+  "publicDataRef": "264337"
+}
+```
+
+- `location.category`: 관광지·숙박·축제·캠핑장 등 자유 문자열
+- `publicDataRef`: 공공데이터 `contentId` 연결 (선택)
+- Joi 검증 적용 — 필수 필드 누락·타입 오류 시 400 반환
+- 존재하지 않는 ID 수정·삭제 시 Prisma `P2025` 코드를 감지해 404 반환
+
+#### Prisma 마이그레이션
+
+```bash
+# 개발 환경
+npx prisma migrate dev --name add_schedule
+
+# 프로덕션 환경
+npx prisma migrate deploy
+```
+
+## 테스트
+
+```bash
+npm test              # 전체 테스트 실행
+npm run test:watch    # 파일 변경 감지 후 재실행
+npm run test:coverage # 커버리지 리포트 생성
+```
+
+Jest + ts-jest + Supertest 기반으로 Prisma 클라이언트를 모킹하여 실제 DB 없이 테스트합니다.
+
+| 테스트 파일 | 케이스 수 | 대상 |
+|------------|---------|------|
+| `src/__tests__/schedule.test.ts` | 15 | POST·GET·PUT·DELETE 정상/오류 케이스 |
 
 ## 유틸리티
 
