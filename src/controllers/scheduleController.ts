@@ -1,14 +1,16 @@
 import { Request, Response } from 'express';
 import Joi from 'joi';
 import prisma from '../prisma';
+import { geocode } from '../services/geocodeService';
 
 // ─── Joi 스키마 ──────────────────────────────────────────────────────────────
 
 const locationSchema = Joi.object({
   name:     Joi.string().required(),
   address:  Joi.string().required(),
-  lat:      Joi.number().required(),
-  lng:      Joi.number().required(),
+  // lat / lng 미제공 시 address로 자동 지오코딩
+  lat:      Joi.number(),
+  lng:      Joi.number(),
   category: Joi.string().required(),
 });
 
@@ -49,14 +51,33 @@ export async function createSchedule(req: Request, res: Response): Promise<void>
     return;
   }
 
+  // lat / lng 미제공 시 주소로 자동 지오코딩
+  const location = { ...value.location };
+  if (location.lat == null || location.lng == null) {
+    try {
+      const geo = await geocode(location.address);
+      if (!geo) {
+        res.status(422).json({ message: `"${location.address}" 위치를 찾을 수 없습니다. lat/lng를 직접 입력하거나 주소를 확인하세요.` });
+        return;
+      }
+      location.lat  = geo.lat;
+      location.lng  = geo.lng;
+      if (!location.name) location.name = geo.name;
+    } catch (geoErr) {
+      console.error('[Schedule] 지오코딩 오류:', geoErr);
+      res.status(502).json({ message: '지오코딩 서비스 오류가 발생했습니다. lat/lng를 직접 입력해 주세요.' });
+      return;
+    }
+  }
+
   try {
     const schedule = await prisma.schedule.create({
       data: {
-        userId:       value.userId,
-        title:        value.title,
-        description:  value.description,
-        scheduledAt:  value.scheduledAt,
-        location:     value.location,
+        userId:        value.userId,
+        title:         value.title,
+        description:   value.description,
+        scheduledAt:   value.scheduledAt,
+        location,
         publicDataRef: value.publicDataRef,
       },
     });

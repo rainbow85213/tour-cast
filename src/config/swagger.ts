@@ -23,6 +23,7 @@ const options: swaggerJsdoc.Options = {
       { name: 'Festival',    description: '축제' },
       { name: 'Campsite',    description: '캠핑장' },
       { name: 'Schedule',    description: '여행 일정' },
+      { name: 'Geocode',     description: '주소/장소명 → 좌표 변환 (카카오 로컬 API)' },
     ],
     components: {
       schemas: {
@@ -92,6 +93,15 @@ const options: swaggerJsdoc.Options = {
           type: 'object',
           properties: {
             message: { type: 'string', example: '리소스를 찾을 수 없습니다.' },
+          },
+        },
+        GeocodeResult: {
+          type: 'object',
+          properties: {
+            lat:     { type: 'number', example: 37.5662952 },
+            lng:     { type: 'number', example: 126.977829 },
+            name:    { type: 'string', example: '서울특별시청' },
+            address: { type: 'string', example: '서울 중구 세종대로 110' },
           },
         },
       },
