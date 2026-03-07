@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import { apiReference } from '@scalar/express-api-reference';
@@ -18,7 +19,35 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// CORS — ALLOWED_ORIGINS 미설정 시 전체 허용 (개발), 설정 시 지정 도메인만 허용 (운영)
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ?.split(',')
+  .map((o) => o.trim())
+  .filter(Boolean) ?? [];
+
+app.use(cors({
+  origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+  credentials: true,
+}));
+
+// Helmet — 보안 HTTP 헤더 적용
+// Swagger UI가 인라인 스크립트를 사용하므로 /api-docs, /api-reference 경로는 CSP 완화
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api-docs') || req.path.startsWith('/api-reference')) {
+    return helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc:  ["'self'", "'unsafe-inline'"],
+          styleSrc:   ["'self'", "'unsafe-inline'"],
+          imgSrc:     ["'self'", 'data:', 'https:'],
+        },
+      },
+    })(req, res, next);
+  }
+  return helmet()(req, res, next);
+});
+
 app.use(express.json());
 
 /**
