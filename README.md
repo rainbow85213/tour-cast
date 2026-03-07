@@ -1,6 +1,13 @@
 # TourCast API Server
 
 [![CI / CD](https://github.com/rainbow85213/tour-cast/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/rainbow85213/tour-cast/actions/workflows/ci-cd.yml)
+[![Node.js](https://img.shields.io/badge/Node.js-20-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io)
+[![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)](https://redis.io)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com)
+[![Last Commit](https://img.shields.io/github/last-commit/rainbow85213/tour-cast)](https://github.com/rainbow85213/tour-cast/commits/master)
+[![Top Language](https://img.shields.io/github/languages/top/rainbow85213/tour-cast)](https://github.com/rainbow85213/tour-cast)
 
 Node.js + TypeScript + Express 기반의 관광 정보 REST API 서버입니다.
 
