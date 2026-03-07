@@ -1,6 +1,7 @@
 # TourCast API Server
 
 [![CI / CD](https://github.com/rainbow85213/tour-cast/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/rainbow85213/tour-cast/actions/workflows/ci-cd.yml)
+[![Tests](https://github.com/rainbow85213/tour-cast/actions/workflows/test.yml/badge.svg)](https://github.com/rainbow85213/tour-cast/actions/workflows/test.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-20-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io)
