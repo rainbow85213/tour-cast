@@ -65,3 +65,20 @@ model Campsite {
 
   @@map("campsites")
 }
+
+model Schedule {
+  id            String   @id @default(cuid())
+  userId        String
+  title         String
+  description   String?
+  scheduledAt   DateTime
+  location      Json     // { name, address, lat, lng, category }
+  completed     Boolean  @default(false)
+  publicDataRef String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([scheduledAt])
+  @@map("schedules")
+}

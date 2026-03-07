@@ -22,6 +22,7 @@ const options: swaggerJsdoc.Options = {
       { name: 'Accommodation', description: '숙박' },
       { name: 'Festival',    description: '축제' },
       { name: 'Campsite',    description: '캠핑장' },
+      { name: 'Schedule',    description: '여행 일정' },
     ],
     components: {
       schemas: {

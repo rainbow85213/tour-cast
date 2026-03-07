@@ -9,6 +9,7 @@ import spotsRouter from './routes/spots';
 import accommodationsRouter from './routes/accommodations';
 import festivalsRouter from './routes/festivals';
 import campsitesRouter from './routes/campsites';
+import scheduleRouter from './routes/schedule';
 import redis from './services/redisClient';
 import { swaggerSpec } from './config/swagger';
 
@@ -108,6 +109,7 @@ app.use('/api/spots', spotsRouter);
 app.use('/api/accommodations', accommodationsRouter);
 app.use('/api/festivals', festivalsRouter);
 app.use('/api/campsites', campsitesRouter);
+app.use('/api/schedule', scheduleRouter);
 
 async function shutdown(signal: string) {
   console.log(`[${signal}] Shutting down...`);
