@@ -26,6 +26,7 @@ Node.js + TypeScript + Express 기반의 관광 정보 REST API 서버입니다.
 | 캐시 | Redis 7 |
 | HTTP 클라이언트 | Axios + axios-retry |
 | API 문서 | Swagger UI / Scalar |
+| 보안 | Helmet + CORS |
 | 컨테이너 | Docker / Docker Compose |
 
 ## 프로젝트 구조
@@ -354,6 +355,33 @@ npx prisma migrate dev --name add_schedule
 npx prisma migrate deploy
 ```
 
+## 보안
+
+### Helmet
+
+모든 응답에 보안 HTTP 헤더를 자동 추가합니다.
+
+| 헤더 | 역할 |
+|------|------|
+| `X-Content-Type-Options: nosniff` | MIME 타입 스니핑 방지 |
+| `X-Frame-Options: SAMEORIGIN` | 클릭재킹 방지 |
+| `Strict-Transport-Security` | HTTPS 강제 |
+| `X-XSS-Protection: 0` | 구형 브라우저 XSS 필터 비활성 (현대 브라우저 기준) |
+
+> `/api-docs`, `/api-reference` 경로는 Swagger UI 인라인 스크립트 호환을 위해 CSP만 완화 적용합니다.
+
+### CORS
+
+`ALLOWED_ORIGINS` 환경 변수로 허용 도메인을 제어합니다.
+
+```bash
+# 개발 — 미설정 시 전체 허용
+ALLOWED_ORIGINS=
+
+# 운영 — 쉼표로 구분하여 지정
+ALLOWED_ORIGINS=https://example.com,https://www.example.com
+```
+
 ## 테스트
 
 ```bash
@@ -405,3 +433,4 @@ const { x, y } = latLonToGrid(37.5683, 126.9778); // 서울
 | `DB_PASSWORD` | DB 비밀번호 |
 | `DATABASE_URL` | Prisma 연결 URL |
 | `REDIS_URL` | Redis 연결 URL (기본값: `redis://localhost:6379`) |
+| `ALLOWED_ORIGINS` | CORS 허용 도메인 (쉼표 구분, 미설정 시 전체 허용) |
