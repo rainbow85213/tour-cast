@@ -13,6 +13,7 @@ import campsitesRouter from './routes/campsites';
 import scheduleRouter from './routes/schedule';
 import notificationRouter from './routes/notification';
 import geocodeRouter from './routes/geocode';
+import publicRouter from './routes/public';
 import { startNotificationScheduler } from './services/notificationScheduler';
 import redis from './services/redisClient';
 import { swaggerSpec } from './config/swagger';
@@ -144,6 +145,7 @@ app.use('/api/campsites', campsitesRouter);
 app.use('/api/schedule', scheduleRouter);
 app.use('/api/notification', notificationRouter);
 app.use('/api/geocode', geocodeRouter);
+app.use('/api/public', publicRouter);
 
 async function shutdown(signal: string) {
   console.log(`[${signal}] Shutting down...`);

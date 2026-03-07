@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Joi from 'joi';
 import prisma from '../prisma';
 import { geocode } from '../services/geocodeService';
+import { getNearbyFacilities } from '../services/publicFacilityService';
 
 // ─── Joi 스키마 ──────────────────────────────────────────────────────────────
 
@@ -53,6 +54,8 @@ export async function createSchedule(req: Request, res: Response): Promise<void>
 
   // lat / lng 미제공 시 주소로 자동 지오코딩
   const location = { ...value.location };
+  let geocodedAuto = false;
+
   if (location.lat == null || location.lng == null) {
     try {
       const geo = await geocode(location.address);
@@ -63,6 +66,7 @@ export async function createSchedule(req: Request, res: Response): Promise<void>
       location.lat  = geo.lat;
       location.lng  = geo.lng;
       if (!location.name) location.name = geo.name;
+      geocodedAuto = true;
     } catch (geoErr) {
       console.error('[Schedule] 지오코딩 오류:', geoErr);
       res.status(502).json({ message: '지오코딩 서비스 오류가 발생했습니다. lat/lng를 직접 입력해 주세요.' });
@@ -71,17 +75,26 @@ export async function createSchedule(req: Request, res: Response): Promise<void>
   }
 
   try {
-    const schedule = await prisma.schedule.create({
-      data: {
-        userId:        value.userId,
-        title:         value.title,
-        description:   value.description,
-        scheduledAt:   value.scheduledAt,
-        location,
-        publicDataRef: value.publicDataRef,
-      },
-    });
-    res.status(201).json(schedule);
+    // DB 저장 + 주변 공공시설 조회(지오코딩 시 자동, fail-open)를 병렬 실행
+    const nearbyPromise = (geocodedAuto && process.env.PUBLIC_DATA_API_KEY)
+      ? getNearbyFacilities(location.lat!, location.lng!, 500, 'all').catch(() => [])
+      : Promise.resolve([]);
+
+    const [schedule, nearbyFacilities] = await Promise.all([
+      prisma.schedule.create({
+        data: {
+          userId:        value.userId,
+          title:         value.title,
+          description:   value.description,
+          scheduledAt:   value.scheduledAt,
+          location,
+          publicDataRef: value.publicDataRef,
+        },
+      }),
+      nearbyPromise,
+    ]);
+
+    res.status(201).json({ ...schedule, nearbyFacilities });
   } catch (err) {
     console.error('[Schedule] create error:', err);
     res.status(500).json({ message: '일정 생성에 실패했습니다.' });

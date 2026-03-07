@@ -23,7 +23,8 @@ const options: swaggerJsdoc.Options = {
       { name: 'Festival',    description: '축제' },
       { name: 'Campsite',    description: '캠핑장' },
       { name: 'Schedule',    description: '여행 일정' },
-      { name: 'Geocode',     description: '주소/장소명 → 좌표 변환 (카카오 로컬 API)' },
+      { name: 'Geocode',        description: '주소/장소명 → 좌표 변환 (카카오 로컬 API)' },
+      { name: 'PublicFacility', description: '반경 내 공공시설 조회 (HIRA 병·의원·약국)' },
     ],
     components: {
       schemas: {
@@ -93,6 +94,17 @@ const options: swaggerJsdoc.Options = {
           type: 'object',
           properties: {
             message: { type: 'string', example: '리소스를 찾을 수 없습니다.' },
+          },
+        },
+        FacilityItem: {
+          type: 'object',
+          properties: {
+            name:     { type: 'string',  example: '서울성모병원' },
+            address:  { type: 'string',  example: '서울특별시 서초구 반포대로 222' },
+            lat:      { type: 'number',  example: 37.5010 },
+            lng:      { type: 'number',  example: 127.0051 },
+            distance: { type: 'integer', example: 320, description: '기준점까지 거리 (미터)' },
+            type:     { type: 'string',  example: '상급종합' },
           },
         },
         GeocodeResult: {
