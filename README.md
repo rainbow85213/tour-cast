@@ -27,6 +27,8 @@ Node.js + TypeScript + Express 기반의 관광 정보 REST API 서버입니다.
 | HTTP 클라이언트 | Axios + axios-retry |
 | API 문서 | Swagger UI / Scalar |
 | 보안 | Helmet + CORS |
+| 푸시 알림 | Firebase Admin SDK (FCM) |
+| 스케줄러 | node-cron |
 | 컨테이너 | Docker / Docker Compose |
 
 ## 프로젝트 구조
@@ -38,23 +40,27 @@ src/
 ├── prisma.ts                 # Prisma Client 싱글톤
 ├── generated/prisma/         # Prisma 자동 생성 클라이언트
 ├── controllers/
-│   ├── spotController.ts     # 반경 내 숙박 검색 (Haversine raw query)
-│   ├── festivalController.ts  # 진행중 축제 조회 + 기상청 날씨 병렬 병합
-│   ├── campController.ts      # 캠핑장 목록 조회 + isAvailable 시뮬레이션 + bookingUrl 생성
-│   └── scheduleController.ts  # 여행 일정 CRUD + Joi 검증
+│   ├── spotController.ts          # 반경 내 숙박 검색 (Haversine raw query)
+│   ├── festivalController.ts      # 진행중 축제 조회 + 기상청 날씨 병렬 병합
+│   ├── campController.ts          # 캠핑장 목록 조회 + isAvailable 시뮬레이션 + bookingUrl 생성
+│   ├── scheduleController.ts      # 여행 일정 CRUD + Joi 검증
+│   └── notificationController.ts  # FCM 즉시 전송 (POST /api/notification/send)
 ├── routes/
 │   ├── touristSpots.ts       # GET /tourist-spots 목록·상세
 │   ├── spots.ts              # GET /api/spots/:id/with-accommodations
 │   ├── accommodations.ts     # GET /api/accommodations 목록·상세
 │   ├── festivals.ts          # GET /api/festivals/active
 │   ├── campsites.ts          # GET /api/campsites
-│   └── schedule.ts           # POST/GET/PUT/DELETE /api/schedule
+│   ├── schedule.ts           # POST/GET/PUT/DELETE /api/schedule
+│   └── notification.ts       # POST /api/notification/send
 ├── config/
 │   └── swagger.ts            # OpenAPI 3.0 스펙 정의 (swagger-jsdoc)
 ├── services/
-│   ├── apiClient.ts          # 공공데이터포털 Axios 인스턴스 (재시도 로직 포함)
-│   ├── weatherApiClient.ts   # 기상청 Axios 인스턴스 + baseDateTime 계산
-│   └── redisClient.ts        # ioredis 싱글톤 클라이언트
+│   ├── apiClient.ts              # 공공데이터포털 Axios 인스턴스 (재시도 로직 포함)
+│   ├── weatherApiClient.ts       # 기상청 Axios 인스턴스 + baseDateTime 계산
+│   ├── redisClient.ts            # ioredis 싱글톤 클라이언트
+│   ├── firebase.ts               # Firebase Admin SDK 초기화 (FIREBASE_SERVICE_ACCOUNT_JSON)
+│   └── notificationScheduler.ts  # node-cron 매분 실행 — 30분·1시간 전 알림 자동 발송
 ├── middlewares/
 │   └── cache.ts              # Redis 캐시 미들웨어 팩토리 (X-Cache 헤더 포함)
 ├── utils/
@@ -79,7 +85,7 @@ prisma.config.ts              # Prisma 7 설정 파일 (schema 경로, datasourc
 | `Campsite` | `campsites` | 캠핑장 (GoCamping API) |
 | `Schedule` | `schedules` | 여행 일정 (사용자 생성 데이터) |
 
-공공데이터 모델은 `contentId`를 unique key로 사용합니다. `Schedule`은 `cuid()` PK를 사용하며 `userId`, `scheduledAt` 인덱스를 포함합니다.
+공공데이터 모델은 `contentId`를 unique key로 사용합니다. `Schedule`은 `cuid()` PK를 사용하며 `userId`, `scheduledAt` 인덱스를 포함합니다. `deviceToken`·`notificationSent` 필드로 FCM 알림 상태를 관리합니다.
 
 ## 외부 API
 
@@ -341,9 +347,42 @@ node -e "
 ```
 
 - `location.category`: 관광지·숙박·축제·캠핑장 등 자유 문자열
+- `deviceToken`: FCM 디바이스 토큰 (선택, 설정 시 자동 알림 발송)
 - `publicDataRef`: 공공데이터 `contentId` 연결 (선택)
 - Joi 검증 적용 — 필수 필드 누락·타입 오류 시 400 반환
 - 존재하지 않는 ID 수정·삭제 시 Prisma `P2025` 코드를 감지해 404 반환
+
+### 푸시 알림
+
+| Method | Path | 설명 |
+|--------|------|------|
+| POST | `/api/notification/send` | FCM 푸시 알림 즉시 전송 |
+
+#### POST /api/notification/send 요청 예시
+
+```json
+{
+  "deviceToken": "fcm-device-token-string",
+  "title": "30분 후 일정이 있습니다",
+  "body": "경복궁 방문",
+  "data": {
+    "scheduleId": "clxyz1234",
+    "type": "schedule_reminder"
+  }
+}
+```
+
+- `FIREBASE_SERVICE_ACCOUNT_JSON` 미설정 시 503 반환 (graceful 비활성)
+- 유효하지 않은 `deviceToken` 시 400 반환
+- `data` 필드는 모두 문자열 key-value (선택)
+
+#### 자동 알림 스케줄러
+
+서버 시작 시 node-cron이 **매분** 실행되어 `scheduledAt` 기준 **30분·1시간 전** 일정을 자동 감지해 FCM 알림을 발송합니다.
+
+- `deviceToken`이 있고, `completed: false`이며, 해당 구간 알림 미발송인 일정만 대상
+- `notificationSent` 배열에 발송 완료 구간(`30min`, `1hour`)을 기록하여 중복 발송 방지
+- Firebase 미초기화 시 스케줄러 자동 비활성
 
 #### Prisma 마이그레이션
 
@@ -434,3 +473,18 @@ const { x, y } = latLonToGrid(37.5683, 126.9778); // 서울
 | `DATABASE_URL` | Prisma 연결 URL |
 | `REDIS_URL` | Redis 연결 URL (기본값: `redis://localhost:6379`) |
 | `ALLOWED_ORIGINS` | CORS 허용 도메인 (쉼표 구분, 미설정 시 전체 허용) |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | Firebase 서비스 계정 JSON (FCM 알림, 미설정 시 알림 기능 비활성) |
+
+### Firebase 설정
+
+1. [Firebase 콘솔](https://console.firebase.google.com) → 프로젝트 설정 → 서비스 계정 → **새 비공개 키 생성**
+2. 다운로드한 JSON을 한 줄로 직렬화하여 환경 변수에 입력
+
+```bash
+# 직렬화 예시
+cat service-account.json | jq -c . | pbcopy   # macOS
+cat service-account.json | jq -c .             # Linux (출력을 .env에 붙여넣기)
+
+# .env
+FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"..."}
+```
