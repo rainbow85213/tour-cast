@@ -25,6 +25,7 @@ Node.js + TypeScript + Express 기반의 관광 정보 REST API 서버입니다.
 | DB | PostgreSQL 16 |
 | 캐시 | Redis 7 |
 | HTTP 클라이언트 | Axios + axios-retry |
+| 지오코딩 | 카카오 로컬 API |
 | API 문서 | Swagger UI / Scalar |
 | 보안 | Helmet + CORS |
 | 푸시 알림 | Firebase Admin SDK (FCM) |
@@ -43,8 +44,9 @@ src/
 │   ├── spotController.ts          # 반경 내 숙박 검색 (Haversine raw query)
 │   ├── festivalController.ts      # 진행중 축제 조회 + 기상청 날씨 병렬 병합
 │   ├── campController.ts          # 캠핑장 목록 조회 + isAvailable 시뮬레이션 + bookingUrl 생성
-│   ├── scheduleController.ts      # 여행 일정 CRUD + Joi 검증
-│   └── notificationController.ts  # FCM 즉시 전송 (POST /api/notification/send)
+│   ├── scheduleController.ts      # 여행 일정 CRUD + Joi 검증 + 자동 지오코딩
+│   ├── notificationController.ts  # FCM 즉시 전송 (POST /api/notification/send)
+│   └── geocodeController.ts       # 주소 → 좌표 변환 (GET /api/geocode)
 ├── routes/
 │   ├── touristSpots.ts       # GET /tourist-spots 목록·상세
 │   ├── spots.ts              # GET /api/spots/:id/with-accommodations
@@ -52,7 +54,8 @@ src/
 │   ├── festivals.ts          # GET /api/festivals/active
 │   ├── campsites.ts          # GET /api/campsites
 │   ├── schedule.ts           # POST/GET/PUT/DELETE /api/schedule
-│   └── notification.ts       # POST /api/notification/send
+│   ├── notification.ts       # POST /api/notification/send
+│   └── geocode.ts            # GET /api/geocode
 ├── config/
 │   └── swagger.ts            # OpenAPI 3.0 스펙 정의 (swagger-jsdoc)
 ├── services/
@@ -60,7 +63,8 @@ src/
 │   ├── weatherApiClient.ts       # 기상청 Axios 인스턴스 + baseDateTime 계산
 │   ├── redisClient.ts            # ioredis 싱글톤 클라이언트
 │   ├── firebase.ts               # Firebase Admin SDK 초기화 (FIREBASE_SERVICE_ACCOUNT_JSON)
-│   └── notificationScheduler.ts  # node-cron 매분 실행 — 30분·1시간 전 알림 자동 발송
+│   ├── notificationScheduler.ts  # node-cron 매분 실행 — 30분·1시간 전 알림 자동 발송
+│   └── geocodeService.ts         # 카카오 주소/키워드 검색 + Redis 1시간 캐시
 ├── middlewares/
 │   └── cache.ts              # Redis 캐시 미들웨어 팩토리 (X-Cache 헤더 포함)
 ├── utils/
@@ -94,6 +98,7 @@ prisma.config.ts              # Prisma 7 설정 파일 (schema 경로, datasourc
 | `tourApiClient` | `apis.data.go.kr/B551011/KorService2` | 관광지·숙박·축제 |
 | `campApiClient` | `apis.data.go.kr/B551011/GoCamping` | 캠핑장 |
 | `weatherApiClient` | `apis.data.go.kr/1360000/VilageFcstInfoService_2.0` | 기상청 초단기실황 |
+| `geocodeService` | `dapi.kakao.com/v2/local` | 주소·키워드 → 좌표 변환 |
 
 - 모든 요청에 `MobileOS=ETC`, `MobileApp=AppTest`, `_type=json` 기본 파라미터 포함
 - 네트워크 오류 및 5xx, 429 응답 시 최대 3회 자동 재시도 (1s / 2s / 3s)
@@ -346,11 +351,37 @@ node -e "
 }
 ```
 
+- `location.lat` / `location.lng`: **선택 사항** — 미제공 시 `address`로 자동 지오코딩
 - `location.category`: 관광지·숙박·축제·캠핑장 등 자유 문자열
 - `deviceToken`: FCM 디바이스 토큰 (선택, 설정 시 자동 알림 발송)
 - `publicDataRef`: 공공데이터 `contentId` 연결 (선택)
 - Joi 검증 적용 — 필수 필드 누락·타입 오류 시 400 반환
 - 존재하지 않는 ID 수정·삭제 시 Prisma `P2025` 코드를 감지해 404 반환
+
+### 지오코딩
+
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/api/geocode?address=` | 주소·장소명 → 위경도 좌표 변환 |
+
+#### GET /api/geocode 응답 예시
+
+```bash
+GET /api/geocode?address=서울시청
+```
+
+```json
+{
+  "lat": 37.5662952,
+  "lng": 126.977829,
+  "name": "서울특별시청",
+  "address": "서울 중구 세종대로 110"
+}
+```
+
+- 1차: 카카오 주소 검색 API, 결과 없으면 키워드 검색 API로 자동 폴백
+- 결과는 Redis에 **1시간** 캐시 (키: `geocode:{query}`)
+- `KAKAO_API_KEY` 미설정 시 503, 결과 없음 시 404 반환
 
 ### 푸시 알림
 
@@ -465,6 +496,7 @@ const { x, y } = latLonToGrid(37.5683, 126.9778); // 서울
 | `TOUR_API_KEY` | 한국관광공사 TourAPI 인증키 (Encoding) |
 | `CAMP_API_KEY` | 한국관광공사 GoCamping API 인증키 (Encoding) |
 | `WEATHER_API_KEY` | 기상청 단기예보 API 인증키 (Encoding) |
+| `KAKAO_API_KEY` | 카카오 REST API 키 (지오코딩, 미설정 시 지오코딩 기능 비활성) |
 | `DB_HOST` | PostgreSQL 호스트 |
 | `DB_PORT` | PostgreSQL 포트 |
 | `DB_NAME` | DB 이름 |
@@ -474,6 +506,19 @@ const { x, y } = latLonToGrid(37.5683, 126.9778); // 서울
 | `REDIS_URL` | Redis 연결 URL (기본값: `redis://localhost:6379`) |
 | `ALLOWED_ORIGINS` | CORS 허용 도메인 (쉼표 구분, 미설정 시 전체 허용) |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | Firebase 서비스 계정 JSON (FCM 알림, 미설정 시 알림 기능 비활성) |
+
+### Kakao API 키 발급
+
+1. [카카오 개발자 콘솔](https://developers.kakao.com) 접속 → 로그인
+2. **내 애플리케이션** → 애플리케이션 추가
+3. **앱 설정 → 앱 키**에서 **REST API 키** 복사
+4. `.env`에 입력
+
+```bash
+KAKAO_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+> 카카오 로컬 API는 별도 동의 없이 REST API 키만으로 사용 가능합니다.
 
 ### Firebase 설정
 
