@@ -29,16 +29,18 @@ app.use('/api/schedule', scheduleRouter);
 const LOCATION = { name: '경복궁', address: '서울시 종로구', lat: 37.579, lng: 126.977, category: '관광지' };
 
 const SCHEDULE = {
-  id:           'clxyz1234',
-  userId:       'user_abc',
-  title:        '경복궁 방문',
-  description:  '오전 관람',
-  scheduledAt:  new Date('2026-04-01T10:00:00Z'),
-  location:     LOCATION,
-  completed:    false,
-  publicDataRef: null,
-  createdAt:    new Date(),
-  updatedAt:    new Date(),
+  id:               'clxyz1234',
+  userId:           'user_abc',
+  title:            '경복궁 방문',
+  description:      '오전 관람',
+  scheduledAt:      new Date('2026-04-01T10:00:00Z'),
+  location:         LOCATION,
+  completed:        false,
+  publicDataRef:    null,
+  deviceToken:      null,
+  notificationSent: [] as string[],
+  createdAt:        new Date(),
+  updatedAt:        new Date(),
 };
 
 const PRISMA_NOT_FOUND = Object.assign(new Error('Not found'), { code: 'P2025' });

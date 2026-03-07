@@ -11,6 +11,8 @@ import accommodationsRouter from './routes/accommodations';
 import festivalsRouter from './routes/festivals';
 import campsitesRouter from './routes/campsites';
 import scheduleRouter from './routes/schedule';
+import notificationRouter from './routes/notification';
+import { startNotificationScheduler } from './services/notificationScheduler';
 import redis from './services/redisClient';
 import { swaggerSpec } from './config/swagger';
 
@@ -139,6 +141,7 @@ app.use('/api/accommodations', accommodationsRouter);
 app.use('/api/festivals', festivalsRouter);
 app.use('/api/campsites', campsitesRouter);
 app.use('/api/schedule', scheduleRouter);
+app.use('/api/notification', notificationRouter);
 
 async function shutdown(signal: string) {
   console.log(`[${signal}] Shutting down...`);
@@ -151,6 +154,7 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 async function bootstrap() {
   await testConnection();
+  startNotificationScheduler();
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`Swagger UI  → http://localhost:${PORT}/api-docs`);
