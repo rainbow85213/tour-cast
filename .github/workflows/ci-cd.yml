@@ -8,11 +8,11 @@ on:
 
 jobs:
   # ────────────────────────────────────────────────
-  # CI: 타입 체크 & 빌드 검증
+  # CI: 타입 체크 & 테스트 & 빌드 검증
   # 모든 브랜치 push / master PR에서 실행
   # ────────────────────────────────────────────────
   ci:
-    name: Type Check & Build
+    name: Type Check & Test & Build
     runs-on: ubuntu-latest
 
     steps:
@@ -30,6 +30,9 @@ jobs:
 
       - name: TypeScript type check
         run: npx tsc --noEmit
+
+      - name: Test
+        run: npm test
 
       - name: Build
         run: npm run build
