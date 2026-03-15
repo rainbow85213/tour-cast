@@ -5,6 +5,7 @@ import {
   getSchedule,
   updateSchedule,
   deleteSchedule,
+  getRoute,
 } from '../controllers/scheduleController';
 
 const router = Router();
@@ -113,6 +114,64 @@ router.post('/', createSchedule);
  *               $ref: '#/components/schemas/Error400'
  */
 router.get('/', listSchedules);
+
+/**
+ * @openapi
+ * /api/schedule/route:
+ *   get:
+ *     tags: [Schedule]
+ *     summary: 특정 날짜의 경로 조회
+ *     description: |
+ *       userId와 date(YYYY-MM-DD)로 해당 날짜의 일정을 scheduledAt 기준 오름차순 정렬 후,
+ *       각 좌표 배열·총 거리(Haversine)·예상 이동 시간(50km/h 가정)을 반환합니다.
+ *     parameters:
+ *       - name: userId
+ *         in: query
+ *         required: true
+ *         schema: { type: string }
+ *       - name: date
+ *         in: query
+ *         required: true
+ *         schema: { type: string, example: '2024-03-02' }
+ *         description: YYYY-MM-DD 형식
+ *     responses:
+ *       200:
+ *         description: 경로 정보
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 coordinates:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       lat: { type: number, example: 37.5796 }
+ *                       lng: { type: number, example: 126.9770 }
+ *                 totalDistanceKm:
+ *                   type: number
+ *                   example: 12.3
+ *                 estimatedTimeMin:
+ *                   type: integer
+ *                   example: 15
+ *                 stops:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       lat:         { type: number }
+ *                       lng:         { type: number }
+ *                       title:       { type: string }
+ *                       scheduledAt: { type: string, format: date-time }
+ *       400:
+ *         description: 파라미터 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error400'
+ */
+router.get('/route', getRoute);
 
 /**
  * @openapi

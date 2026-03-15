@@ -185,6 +185,76 @@ export async function deleteSchedule(req: Request, res: Response): Promise<void>
   }
 }
 
+// ─── GET /api/schedule/route ──────────────────────────────────────────────────
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export async function getRoute(req: Request, res: Response): Promise<void> {
+  const userId = req.query.userId as string | undefined;
+  const date   = req.query.date   as string | undefined;
+
+  if (!userId) { validationError(res, 'userId 쿼리 파라미터가 필요합니다.'); return; }
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    validationError(res, 'date 쿼리 파라미터가 필요합니다. (형식: YYYY-MM-DD)');
+    return;
+  }
+
+  const dayStart = new Date(`${date}T00:00:00.000Z`);
+  const dayEnd   = new Date(`${date}T23:59:59.999Z`);
+
+  try {
+    const schedules = await prisma.schedule.findMany({
+      where: {
+        userId,
+        scheduledAt: { gte: dayStart, lte: dayEnd },
+      },
+      orderBy: { scheduledAt: 'asc' },
+    });
+
+    if (schedules.length === 0) {
+      res.json({ coordinates: [], totalDistanceKm: 0, estimatedTimeMin: 0, stops: [] });
+      return;
+    }
+
+    const stops = schedules.map((s) => {
+      const loc = s.location as { lat: number; lng: number; name?: string };
+      return { lat: loc.lat, lng: loc.lng, title: s.title, scheduledAt: s.scheduledAt };
+    });
+
+    const coordinates = stops.map(({ lat, lng }) => ({ lat, lng }));
+
+    let totalDistanceKm = 0;
+    for (let i = 1; i < stops.length; i++) {
+      totalDistanceKm += haversineKm(
+        stops[i - 1].lat, stops[i - 1].lng,
+        stops[i].lat,     stops[i].lng,
+      );
+    }
+
+    const estimatedTimeMin = Math.round((totalDistanceKm / 50) * 60);
+
+    res.json({
+      coordinates,
+      totalDistanceKm: Math.round(totalDistanceKm * 10) / 10,
+      estimatedTimeMin,
+      stops,
+    });
+  } catch (err) {
+    console.error('[Schedule] route error:', err);
+    res.status(500).json({ message: '경로 조회에 실패했습니다.' });
+  }
+}
+
 // ─── Prisma P2025 (레코드 없음) 감지 ──────────────────────────────────────────
 
 function isPrismaNotFound(err: unknown): boolean {
