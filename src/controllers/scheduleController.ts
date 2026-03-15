@@ -226,12 +226,12 @@ export async function getRoute(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const stops = schedules.map((s) => {
+    const stops = schedules.map((s: { title: string; scheduledAt: Date; location: unknown }) => {
       const loc = s.location as { lat: number; lng: number; name?: string };
       return { lat: loc.lat, lng: loc.lng, title: s.title, scheduledAt: s.scheduledAt };
     });
 
-    const coordinates = stops.map(({ lat, lng }) => ({ lat, lng }));
+    const coordinates = stops.map(({ lat, lng }: { lat: number; lng: number }) => ({ lat, lng }));
 
     let totalDistanceKm = 0;
     for (let i = 1; i < stops.length; i++) {
