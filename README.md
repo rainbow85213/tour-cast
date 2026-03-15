@@ -498,6 +498,27 @@ npx prisma migrate dev --name add_schedule
 npx prisma migrate deploy
 ```
 
+## 현재 상태 및 알려진 이슈
+
+> 다음 작업자가 빠르게 파악할 수 있도록 미완성·임시 구현 항목을 정리합니다.
+
+### 미완성 / 임시 구현
+
+| 항목 | 위치 | 상태 | 설명 |
+|------|------|------|------|
+| 데이터 동기화 자동 실행 | `jobs/syncTourData.ts` | ⚠️ 수동 실행만 가능 | 함수는 구현되어 있으나 `index.ts`에서 cron 등록 없음. DB가 비어 있으면 모든 목록 API가 빈 배열 반환 |
+| 캠핑장 예약 가능 여부 | `controllers/campController.ts` | ⚠️ 랜덤값 | `isAvailable: Math.random() < 0.5` — 실제 예약 API 미연동 |
+| 사용자 인증 | `controllers/scheduleController.ts` | ❌ 없음 | `userId`는 문자열로만 저장. JWT 등 인증 미적용으로 누구나 임의 userId로 일정 CRUD 가능 |
+| `overview` 필드 | `prisma/schema.prisma` | ⚠️ 미사용 | `TouristSpot` 모델에 존재하나 sync 잡에서 저장하지 않음 (관광공사 상세조회 API 별도 호출 필요) |
+| TravelPlatform 연동 | 전체 | ❌ 없음 | Laravel TravelPlatform(`https://travel-platform.fly.dev`)과 현재 어떤 연결도 없음 |
+
+### 다음 우선순위 작업 제안
+
+1. **데이터 동기화 자동화** — `syncTourData` 함수를 cron(`node-cron`)으로 주기 실행 등록 (예: 매일 새벽 3시)
+2. **사용자 인증 미들웨어** — TravelPlatform JWT 검증 또는 자체 API Key 방식 추가
+3. **캠핑 예약 실연동** — 실제 예약 API 또는 실시간 잔여 확인 로직 구현
+4. **TravelPlatform 연동** — 배포 후 `TRAVEL_PLATFORM_URL` 환경변수 추가 및 유저 정보/인증 연동
+
 ## 보안
 
 ### Helmet

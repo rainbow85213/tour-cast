@@ -2,7 +2,7 @@ import { tourApiClient, campApiClient } from '../services/apiClient';
 import prisma from '../prisma';
 
 const AREA_BASED_LIST = '/areaBasedList2';
-const NUM_OF_ROWS = 100;
+const NUM_OF_ROWS = 1000;
 
 interface TourItem {
   contentid: string;
@@ -27,17 +27,30 @@ interface CampItem {
 }
 
 async function fetchAreaBasedList(contentTypeId: number): Promise<TourItem[]> {
-  const res = await tourApiClient.get(AREA_BASED_LIST, {
-    params: { numOfRows: NUM_OF_ROWS, pageNo: 1, contentTypeId },
-  });
+  const all: TourItem[] = [];
+  let pageNo = 1;
 
-  const header = res.data?.response?.header;
-  if (header?.resultCode !== '0000') {
-    throw new Error(`TourAPI 오류 [${header?.resultCode}]: ${header?.resultMsg}`);
+  while (true) {
+    const res = await tourApiClient.get(AREA_BASED_LIST, {
+      params: { numOfRows: NUM_OF_ROWS, pageNo, contentTypeId },
+    });
+
+    const header = res.data?.response?.header;
+    if (header?.resultCode !== '0000') {
+      throw new Error(`TourAPI 오류 [${header?.resultCode}]: ${header?.resultMsg}`);
+    }
+
+    const body = res.data?.response?.body;
+    const items = body?.items?.item;
+    const batch: TourItem[] = Array.isArray(items) ? items : [];
+    all.push(...batch);
+
+    const totalCount = Number(body?.totalCount ?? 0);
+    if (all.length >= totalCount || batch.length < NUM_OF_ROWS) break;
+    pageNo++;
   }
 
-  const items = res.data?.response?.body?.items?.item;
-  return Array.isArray(items) ? items : [];
+  return all;
 }
 
 function parseCoord(value?: string): number | null {
@@ -135,18 +148,29 @@ export async function syncAccommodations(): Promise<void> {
 export async function syncFestivals(): Promise<void> {
   console.log('[syncFestivals] 시작');
 
-  const res = await tourApiClient.get('/searchFestival2', {
-    params: { numOfRows: NUM_OF_ROWS, pageNo: 1, eventStartDate: '20240101' },
-  });
+  const all: TourItem[] = [];
+  let pageNo = 1;
 
-  const header = res.data?.response?.header;
-  if (header?.resultCode !== '0000') {
-    throw new Error(`TourAPI 오류 [${header?.resultCode}]: ${header?.resultMsg}`);
+  while (true) {
+    const res = await tourApiClient.get('/searchFestival2', {
+      params: { numOfRows: NUM_OF_ROWS, pageNo, eventStartDate: '20240101' },
+    });
+
+    const header = res.data?.response?.header;
+    if (header?.resultCode !== '0000') {
+      throw new Error(`TourAPI 오류 [${header?.resultCode}]: ${header?.resultMsg}`);
+    }
+
+    const body = res.data?.response?.body;
+    const batch: TourItem[] = Array.isArray(body?.items?.item) ? body.items.item : [];
+    all.push(...batch);
+
+    const totalCount = Number(body?.totalCount ?? 0);
+    if (all.length >= totalCount || batch.length < NUM_OF_ROWS) break;
+    pageNo++;
   }
 
-  const items: TourItem[] = Array.isArray(res.data?.response?.body?.items?.item)
-    ? res.data.response.body.items.item
-    : [];
+  const items = all;
 
   let upserted = 0;
   let skipped = 0;
@@ -198,18 +222,29 @@ export async function syncFestivals(): Promise<void> {
 export async function syncCampsites(): Promise<void> {
   console.log('[syncCampsites] 시작');
 
-  const res = await campApiClient.get('/basedList', {
-    params: { numOfRows: NUM_OF_ROWS, pageNo: 1 },
-  });
+  const all: CampItem[] = [];
+  let pageNo = 1;
 
-  const header = res.data?.response?.header;
-  if (header?.resultCode !== '0000') {
-    throw new Error(`GoCamping API 오류 [${header?.resultCode}]: ${header?.resultMsg}`);
+  while (true) {
+    const res = await campApiClient.get('/basedList', {
+      params: { numOfRows: NUM_OF_ROWS, pageNo },
+    });
+
+    const header = res.data?.response?.header;
+    if (header?.resultCode !== '0000') {
+      throw new Error(`GoCamping API 오류 [${header?.resultCode}]: ${header?.resultMsg}`);
+    }
+
+    const body = res.data?.response?.body;
+    const batch: CampItem[] = Array.isArray(body?.items?.item) ? body.items.item : [];
+    all.push(...batch);
+
+    const totalCount = Number(body?.totalCount ?? 0);
+    if (all.length >= totalCount || batch.length < NUM_OF_ROWS) break;
+    pageNo++;
   }
 
-  const items: CampItem[] = Array.isArray(res.data?.response?.body?.items?.item)
-    ? res.data.response.body.items.item
-    : [];
+  const items = all;
 
   let upserted = 0;
   let skipped = 0;

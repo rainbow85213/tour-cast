@@ -157,13 +157,21 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 async function bootstrap() {
-  await testConnection();
-  startNotificationScheduler();
+  // 서버를 먼저 시작해 헬스체크가 통과하도록 함
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`Swagger UI  → http://localhost:${PORT}/api-docs`);
     console.log(`Scalar Docs → http://localhost:${PORT}/api-reference`);
   });
+
+  // DB 연결 확인 — 실패해도 서버는 유지 (Fly.io cold-start 대응)
+  try {
+    await testConnection();
+  } catch (err) {
+    console.error('[DB] 연결 실패 — 서버는 계속 실행됩니다:', err);
+  }
+
+  startNotificationScheduler();
 }
 
 bootstrap().catch((err) => {
