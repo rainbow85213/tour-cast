@@ -7,7 +7,7 @@ const config: Config = {
   testMatch: ['**/__tests__/**/*.test.ts'],
   clearMocks: true,
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { isolatedModules: true }],
+    '^.+\\.tsx?$': ['ts-jest'],
   },
 };
 

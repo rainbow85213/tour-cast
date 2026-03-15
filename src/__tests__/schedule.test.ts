@@ -3,10 +3,7 @@ import express from 'express';
 import scheduleRouter from '../routes/schedule';
 
 // ─── Redis 모킹 (CI 환경에서 실제 연결 방지) ──────────────────────────────────
-jest.mock('../services/redisClient', () => ({
-  __esModule: true,
-  default: { get: jest.fn(), set: jest.fn(), setex: jest.fn(), del: jest.fn(), quit: jest.fn() },
-}));
+jest.mock('../services/redisClient');
 
 // ─── Prisma 모킹 ──────────────────────────────────────────────────────────────
 jest.mock('../prisma', () => ({
