@@ -172,6 +172,7 @@ router.get('/', listSchedules);
  *               $ref: '#/components/schemas/Error400'
  */
 router.get('/route', getRoute);
+router.get('/map', getRoute);
 
 /**
  * @openapi
