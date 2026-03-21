@@ -1,0 +1,33 @@
+meta {
+  name: [에러] items 누락으로 생성 실패 → 400
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/schedule
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "userId": "{{userId}}",
+    "date": "2026-03-21",
+    "title": "items 없는 일정"
+  }
+}
+
+tests {
+  test("400 반환", function() {
+    expect(res.status).to.equal(400);
+  });
+
+  test("에러 메시지에 items 언급", function() {
+    expect(res.body.message).to.include("items");
+  });
+}

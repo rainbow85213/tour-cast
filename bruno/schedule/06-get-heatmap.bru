@@ -1,0 +1,30 @@
+meta {
+  name: 06 히트맵 조회
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/schedule/heatmap?userId={{userId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("200 반환", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("배열 형식 반환", function() {
+    expect(res.body).to.be.an("array");
+  });
+
+  test("항목에 lat, lng, weight 존재", function() {
+    if (res.body.length > 0) {
+      expect(res.body[0]).to.have.property("lat");
+      expect(res.body[0]).to.have.property("lng");
+      expect(res.body[0]).to.have.property("weight");
+      expect(res.body[0].weight).to.be.a("number");
+    }
+  });
+}

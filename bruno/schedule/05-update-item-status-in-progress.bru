@@ -1,0 +1,31 @@
+meta {
+  name: 05 아이템 상태 업데이트 (in_progress)
+  type: http
+  seq: 8
+}
+
+patch {
+  url: {{baseUrl}}/api/schedule/item/{{itemId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "status": "in_progress"
+  }
+}
+
+tests {
+  test("200 반환", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("status가 in_progress로 변경됨", function() {
+    expect(res.body.status).to.equal("in_progress");
+  });
+}

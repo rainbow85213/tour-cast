@@ -1,11 +1,16 @@
 import { Router } from 'express';
 import {
+  createTravelPlan,
   createSchedule,
   listSchedules,
+  listTravelPlans,
   getSchedule,
   updateSchedule,
   deleteSchedule,
   getRoute,
+  getMapItems,
+  getHeatmap,
+  updateItemStatus,
 } from '../controllers/scheduleController';
 
 const router = Router();
@@ -74,7 +79,40 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/Error400'
  */
-router.post('/', createSchedule);
+router.post('/', createTravelPlan);
+
+/**
+ * @openapi
+ * /api/schedule/single:
+ *   post:
+ *     tags: [Schedule]
+ *     summary: 단건 일정 생성 (알림용, 레거시)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [userId, title, scheduledAt, location]
+ *             properties:
+ *               userId:        { type: string }
+ *               title:         { type: string, maxLength: 200 }
+ *               description:   { type: string, maxLength: 1000 }
+ *               scheduledAt:   { type: string, format: date-time }
+ *               location:
+ *                 $ref: '#/components/schemas/ScheduleLocation'
+ *               publicDataRef: { type: string }
+ *     responses:
+ *       201:
+ *         description: 생성된 일정
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Schedule'
+ *       400:
+ *         description: 유효성 검증 실패
+ */
+router.post('/single', createSchedule);
 
 /**
  * @openapi
@@ -171,8 +209,153 @@ router.get('/', listSchedules);
  *             schema:
  *               $ref: '#/components/schemas/Error400'
  */
+/**
+ * @openapi
+ * /api/schedule/map:
+ *   get:
+ *     tags: [Schedule]
+ *     summary: 지도용 일정 아이템 조회
+ *     parameters:
+ *       - name: userId
+ *         in: query
+ *         required: true
+ *         schema: { type: string }
+ *       - name: date
+ *         in: query
+ *         required: true
+ *         schema: { type: string, example: '2024-03-02' }
+ *         description: YYYY-MM-DD 형식
+ *       - name: filters
+ *         in: query
+ *         schema: { type: string, example: 'restaurant,attraction' }
+ *         description: 카테고리 필터 (쉼표 구분)
+ *     responses:
+ *       200:
+ *         description: 일정 아이템 목록
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 items:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:          { type: string }
+ *                       title:       { type: string }
+ *                       latitude:    { type: number }
+ *                       longitude:   { type: number }
+ *                       status:      { type: string, enum: [completed, in_progress, pending, cancelled] }
+ *                       time:        { type: string, example: '10:00' }
+ *                       scheduledAt: { type: string, format: date-time, nullable: true }
+ *                       category:    { type: string, enum: [restaurant, attraction, accommodation, transport, other] }
+ *                       description: { type: string, nullable: true }
+ *                       order:       { type: integer }
+ */
+router.get('/map', getMapItems);
+
+/**
+ * @openapi
+ * /api/schedule/heatmap:
+ *   get:
+ *     tags: [Schedule]
+ *     summary: 방문 히트맵 조회
+ *     parameters:
+ *       - name: userId
+ *         in: query
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: 히트맵 좌표 목록
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   lat:    { type: number }
+ *                   lng:    { type: number }
+ *                   weight: { type: integer, description: 누적 방문 횟수 }
+ */
+router.get('/heatmap', getHeatmap);
+
+/**
+ * @openapi
+ * /api/schedule/list:
+ *   get:
+ *     tags: [Schedule]
+ *     summary: 저장된 여행 플랜 목록 조회
+ *     parameters:
+ *       - name: userId
+ *         in: query
+ *         required: true
+ *         schema: { type: string }
+ *       - $ref: '#/components/parameters/PageParam'
+ *       - $ref: '#/components/parameters/LimitParam'
+ *     responses:
+ *       200:
+ *         description: 여행 플랜 목록
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 schedules:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:        { type: string }
+ *                       date:      { type: string, example: '2024-03-02' }
+ *                       title:     { type: string }
+ *                       itemCount: { type: integer }
+ *                       createdAt: { type: string, format: date-time }
+ *                 total:   { type: integer }
+ *                 hasMore: { type: boolean }
+ */
+router.get('/list', listTravelPlans);
+
+/**
+ * @openapi
+ * /api/schedule/item/{itemId}:
+ *   patch:
+ *     tags: [Schedule]
+ *     summary: 일정 아이템 상태 업데이트
+ *     parameters:
+ *       - name: itemId
+ *         in: path
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [completed, in_progress, pending, cancelled]
+ *     responses:
+ *       200:
+ *         description: 업데이트된 아이템
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:     { type: string }
+ *                 status: { type: string }
+ *       404:
+ *         description: 아이템 없음
+ */
+router.patch('/item/:itemId', updateItemStatus);
+
 router.get('/route', getRoute);
-router.get('/map', getRoute);
 
 /**
  * @openapi

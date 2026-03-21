@@ -1,0 +1,33 @@
+meta {
+  name: 04 저장된 일정 목록 조회
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/schedule/list?userId={{userId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("200 반환", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("schedules 배열 존재", function() {
+    expect(res.body.schedules).to.be.an("array");
+  });
+
+  test("total, hasMore 필드 존재", function() {
+    expect(res.body).to.have.property("total");
+    expect(res.body).to.have.property("hasMore");
+  });
+
+  test("schedules 항목에 itemCount 존재", function() {
+    if (res.body.schedules.length > 0) {
+      expect(res.body.schedules[0]).to.have.property("itemCount");
+      expect(res.body.schedules[0]).to.have.property("createdAt");
+    }
+  });
+}

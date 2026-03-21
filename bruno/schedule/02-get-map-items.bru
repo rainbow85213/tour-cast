@@ -1,0 +1,32 @@
+meta {
+  name: 02 지도용 일정 조회
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/schedule/map?userId={{userId}}&date=2026-03-21
+  body: none
+  auth: none
+}
+
+tests {
+  test("200 반환", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("items 래핑 형식", function() {
+    expect(res.body).to.have.property("items");
+    expect(res.body.items).to.be.an("array");
+  });
+
+  test("items에 필수 필드 존재", function() {
+    const item = res.body.items[0];
+    expect(item).to.have.property("id");
+    expect(item).to.have.property("latitude");
+    expect(item).to.have.property("longitude");
+    expect(item).to.have.property("status");
+    expect(item).to.have.property("category");
+    expect(item).to.have.property("order");
+  });
+}

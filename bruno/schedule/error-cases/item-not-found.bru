@@ -1,0 +1,27 @@
+meta {
+  name: [에러] 존재하지 않는 itemId → 404
+  type: http
+  seq: 12
+}
+
+patch {
+  url: {{baseUrl}}/api/schedule/item/nonexistent_id_000
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "status": "completed"
+  }
+}
+
+tests {
+  test("404 반환", function() {
+    expect(res.status).to.equal(404);
+  });
+}

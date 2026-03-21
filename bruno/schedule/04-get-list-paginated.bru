@@ -1,0 +1,21 @@
+meta {
+  name: 04 저장된 일정 목록 조회 (페이지네이션)
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/schedule/list?userId={{userId}}&page=1&limit=5
+  body: none
+  auth: none
+}
+
+tests {
+  test("200 반환", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("limit 적용됨", function() {
+    expect(res.body.schedules.length).to.be.at.most(5);
+  });
+}

@@ -1,0 +1,31 @@
+meta {
+  name: 03 경로 조회
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/schedule/route?userId={{userId}}&date=2026-03-21
+  body: none
+  auth: none
+}
+
+tests {
+  test("200 반환", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("coordinates 배열 존재", function() {
+    expect(res.body.coordinates).to.be.an("array");
+  });
+
+  test("totalDistance 필드명 확인 (km)", function() {
+    expect(res.body).to.have.property("totalDistance");
+    expect(res.body.totalDistance).to.be.a("number");
+  });
+
+  test("estimatedTime 필드명 확인 (분)", function() {
+    expect(res.body).to.have.property("estimatedTime");
+    expect(res.body.estimatedTime).to.be.a("number");
+  });
+}

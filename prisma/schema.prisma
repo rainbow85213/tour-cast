@@ -84,3 +84,35 @@ model Schedule {
   @@index([scheduledAt])
   @@map("schedules")
 }
+
+model TravelPlan {
+  id         String           @id @default(cuid())
+  userId     String
+  date       String           // YYYY-MM-DD
+  title      String
+  sourceText String?
+  createdAt  DateTime         @default(now())
+  items      TravelPlanItem[]
+
+  @@index([userId])
+  @@map("travel_plans")
+}
+
+model TravelPlanItem {
+  id          String     @id @default(cuid())
+  planId      String
+  plan        TravelPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  title       String
+  latitude    Float
+  longitude   Float
+  status      String     @default("pending")
+  time        String
+  scheduledAt DateTime?
+  category    String
+  description String?
+  order       Int
+  createdAt   DateTime   @default(now())
+
+  @@index([planId])
+  @@map("travel_plan_items")
+}

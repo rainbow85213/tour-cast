@@ -1,0 +1,21 @@
+meta {
+  name: [에러] date 누락 → 400
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/schedule/map?userId={{userId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("400 반환", function() {
+    expect(res.status).to.equal(400);
+  });
+
+  test("에러 메시지에 date 언급", function() {
+    expect(res.body.message).to.include("date");
+  });
+}
