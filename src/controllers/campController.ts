@@ -28,7 +28,7 @@ export async function getCampsites(req: Request, res: Response): Promise<void> {
 
   const enriched = items.map((camp) => ({
     ...camp,
-    isAvailable: Math.random() < 0.5,
+    isAvailable: null,
     bookingUrl: camp.resveUrl
       ? camp.resveUrl
       : `https://search.naver.com/search.naver?query=${encodeURIComponent(camp.title + ' 예약')}`,

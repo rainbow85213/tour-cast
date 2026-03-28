@@ -19,19 +19,19 @@
 
 ```
 [공공 데이터 원천]
-한국관광공사 API ──┐
+한국관광공사 API ───┐
 고캠핑 API        ├──▶ jobs/syncTourData.ts ──▶ PostgreSQL DB
-기상청 API        │                              ┌──────────────┐
-HIRA 심평원 API   │                              │ tourist_spots│
-카카오 로컬 API   ┘                              │ accommodations│
-                                                 │ festivals    │
-                                                 │ campsites    │
-                                                 │ schedules    │
-                                                 └──────────────┘
+기상청 API        │                              ┌───────────────┐
+HIRA 심평원 API   │                              │ tourist_spots │
+카카오 로컬 API    ┘                              │ accommodations│
+                                               │ festivals     │
+                                               │ campsites     │
+                                               │ schedules     │
+                                               └───────────────┘
                                                         │
                               Redis (캐시)               │
-                              ├── 관광지 목록: 6h         │
-                              ├── 관광지 상세: 24h        ▼
+                              ├── 관광지 목록: 6h          │
+                              ├── 관광지 상세: 24h         ▼
                               ├── 숙박: 6h / 24h    Express REST API
                               ├── 축제: 10min            │
                               └── 지오코딩: 1h            ▼

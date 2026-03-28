@@ -43,7 +43,7 @@ src/
 ├── controllers/
 │   ├── spotController.ts          # 반경 내 숙박 검색 (Haversine raw query)
 │   ├── festivalController.ts      # 진행중 축제 조회 + 기상청 날씨 병렬 병합
-│   ├── campController.ts          # 캠핑장 목록 조회 + isAvailable 시뮬레이션 + bookingUrl 생성
+│   ├── campController.ts          # 캠핑장 목록 조회 + isAvailable(null) + bookingUrl 생성
 │   ├── scheduleController.ts      # 여행 일정 CRUD + Joi 검증 + 자동 지오코딩 + 주변 시설
 │   ├── notificationController.ts  # FCM 즉시 전송 (POST /api/notification/send)
 │   ├── geocodeController.ts       # 주소 → 좌표 변환 (GET /api/geocode)
@@ -342,7 +342,7 @@ node -e "
       "mapY": 38.119,
       "induty": "일반야영장",
       "resveUrl": "https://www.reservation.go.kr/...",
-      "isAvailable": true,
+      "isAvailable": null,
       "bookingUrl": "https://www.reservation.go.kr/..."
     },
     {
@@ -354,14 +354,14 @@ node -e "
       "mapY": 35.337,
       "induty": "카라반",
       "resveUrl": null,
-      "isAvailable": false,
+      "isAvailable": null,
       "bookingUrl": "https://search.naver.com/search.naver?query=%EC%A7%80%EB%A6%AC%EC%82%B0+%EC%BA%A0%ED%95%91%EC%9E%A5+%EC%98%88%EC%95%BD"
     }
   ]
 }
 ```
 
-- `isAvailable`: 실시간 예약 가능 여부 시뮬레이션 (요청마다 랜덤 생성)
+- `isAvailable`: 예약 가능 여부 — 실제 예약 API 미연동으로 항상 `null` 반환
 - `bookingUrl`: DB에 `resveUrl`이 있으면 그대로 사용, 없으면 `캠핑장이름 예약`으로 네이버 검색 URL 자동 생성
 
 ### 여행 일정 (Plango 앱 연동)
@@ -652,7 +652,7 @@ npx prisma generate
 | 항목 | 위치 | 상태 | 설명 |
 |------|------|------|------|
 | 데이터 동기화 자동 실행 | `jobs/syncTourData.ts` | ⚠️ 수동 실행만 가능 | 함수는 구현되어 있으나 `index.ts`에서 cron 등록 없음. DB가 비어 있으면 모든 목록 API가 빈 배열 반환 |
-| 캠핑장 예약 가능 여부 | `controllers/campController.ts` | ⚠️ 랜덤값 | `isAvailable: Math.random() < 0.5` — 실제 예약 API 미연동 |
+| 캠핑장 예약 가능 여부 | `controllers/campController.ts` | ✅ null 반환 | 랜덤값 제거됨. 실제 예약 API 연동 전까지 `isAvailable: null` 고정 반환 |
 | 사용자 인증 | `controllers/scheduleController.ts` | ❌ 없음 | `userId`는 문자열로만 저장. JWT 등 인증 미적용으로 누구나 임의 userId로 일정 CRUD 가능 |
 | `overview` 필드 | `prisma/schema.prisma` | ⚠️ 미사용 | `TouristSpot` 모델에 존재하나 sync 잡에서 저장하지 않음 (관광공사 상세조회 API 별도 호출 필요) |
 | TravelPlatform 연동 | 전체 | ❌ 없음 | Laravel TravelPlatform(`https://travel-platform.fly.dev`)과 현재 어떤 연결도 없음 |
@@ -663,7 +663,7 @@ npx prisma generate
 1. **프로덕션 마이그레이션** — Fly.io DB에 `npx prisma migrate deploy` 실행하여 `travel_plans`·`travel_plan_items` 테이블 생성
 2. **사용자 인증 미들웨어** — `Authorization: Bearer {token}` 헤더 기반으로 전환 (`userId` 파라미터 제거)
 3. **데이터 동기화 자동화** — `syncTourData` 함수를 cron(`node-cron`)으로 주기 실행 등록 (예: 매일 새벽 3시)
-4. **캠핑 예약 실연동** — 실제 예약 API 또는 실시간 잔여 확인 로직 구현
+4. **캠핑 예약 실연동** — 실제 예약 API 연동 시 `isAvailable` 필드에 실값 반영 (`null` → `boolean`)
 
 ## 보안
 

@@ -72,7 +72,7 @@ const options: swaggerJsdoc.Options = {
             mapY:        { type: 'number',  example: 38.119 },
             induty:      { type: 'string',  nullable: true, example: '일반야영장' },
             resveUrl:    { type: 'string',  nullable: true, example: 'https://www.reservation.go.kr/...' },
-            isAvailable: { type: 'boolean', example: true, description: '실시간 예약 가능 여부 (랜덤 시뮬레이션)' },
+            isAvailable: { type: 'boolean', nullable: true, example: null, description: '예약 가능 여부 (실제 예약 API 미연동 — 항상 null)' },
             bookingUrl:  { type: 'string',  example: 'https://www.reservation.go.kr/...', description: 'resveUrl이 없을 경우 네이버 검색 URL 자동 생성' },
           },
         },
