@@ -20,7 +20,7 @@ TravelPlatform (https://travel-platform.fly.dev)
 
 - **역할:** TravelPlatform의 요청을 받아 관광지·숙박·축제·캠핑장 데이터 공급
 - **외부 API 연동 레이어:** 공공데이터포털 및 카카오 API를 중간에서 통합·캐싱하여 제공
-- **현재 상태:** TravelPlatform과 실제 연동은 미구현 (HANDOVER.md 이슈 #5 참조)
+- **현재 상태:** TravelPlatform /api/schedule/* 프록시를 통해 연동 완료
 
 ---
 
@@ -336,4 +336,4 @@ docker compose down         # 종료
 | 2 | ✅ 해결 | 캠핑 `isAvailable` 랜덤값 → `null` 고정 반환 (실제 예약 API 연동 시 `boolean` 전환 필요) |
 | 3 | ✅ 해결 | `SERVICE_API_KEY` Bearer 토큰 인증 미들웨어 적용 (`/api/schedule`, `/api/notification`) |
 | 4 | 🟡 보류 | `TouristSpot.overview`: `detailCommon2` API를 contentId 1건씩 호출해야 함 → sync 시간 대폭 증가. TODO 주석 추가됨 (`syncTourData.ts`). 별도 스크립트 분리 또는 배치 처리 방식 결정 후 구현 예정 |
-| 5 | 🟢 낮음 | TravelPlatform 실제 연동 미구현 |
+| 5 | ✅ 해결 | TravelPlatform /api/schedule/* 프록시 구현으로 연동 완료 |
