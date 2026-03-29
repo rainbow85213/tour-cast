@@ -167,6 +167,10 @@ DATABASE_URL="postgresql://tour_cast:password@localhost:3309/tour_cast?schema=pu
 # 캐시
 REDIS_URL=redis://localhost:6379
 
+# 서비스간 인증 키 (TravelPlatform → TourCast 호출 시 Authorization: Bearer {key})
+# 미설정 시 개발 모드로 간주하여 인증 없이 통과
+SERVICE_API_KEY=
+
 # CORS — 쉼표 구분, 미설정 시 전체 허용
 # TravelPlatform 운영 URL을 여기에 등록해야 함
 ALLOWED_ORIGINS=https://travel-platform.fly.dev
@@ -175,6 +179,7 @@ ALLOWED_ORIGINS=https://travel-platform.fly.dev
 FIREBASE_SERVICE_ACCOUNT_JSON=
 ```
 
+> `SERVICE_API_KEY` 미설정 → 개발 모드 (경고 로그, 인증 통과)
 > `KAKAO_API_KEY` 미설정 → `/api/geocode` 503
 > `PUBLIC_DATA_API_KEY` 미설정 → `/api/public/nearby` 503
 > `FIREBASE_SERVICE_ACCOUNT_JSON` 미설정 → `/api/notification/send` 503
@@ -195,9 +200,12 @@ GET http://localhost:3000/api/spots/123/with-accommodations
 ```
 
 ### 인증 처리
-- **현재: 인증 없음** — API Key 또는 JWT 미들웨어 미구현 (HANDOVER.md 이슈 #3)
-- `userId`는 문자열 자유 입력 — TravelPlatform이 userId를 직접 전달
-- 향후 계획: TravelPlatform JWT 검증 또는 서비스간 API Key 헤더 (`X-Service-Key`)
+- **`Authorization: Bearer {SERVICE_API_KEY}` 헤더 필수** (보호 엔드포인트 대상)
+- `SERVICE_API_KEY` 미설정 시 개발 모드로 간주 — 경고 로그만 남기고 인증 통과
+- 미들웨어: `src/middlewares/auth.ts` → `requireServiceAuth`
+- **보호 대상:** `/api/schedule/*`, `/api/notification/*`
+- **인증 불필요:** `/tourist-spots`, `/api/spots`, `/api/accommodations`, `/api/festivals`, `/api/campsites`, `/api/geocode`, `/api/public`
+- `userId`는 여전히 문자열로 요청 바디·쿼리에서 전달 (Bearer 토큰과 별개)
 
 ### CORS 설정
 - `ALLOWED_ORIGINS`에 TravelPlatform 도메인 등록 필수
@@ -293,7 +301,8 @@ npx prisma migrate deploy           # 운영: 마이그레이션 적용만
 npx prisma generate                 # 클라이언트 재생성 (schema 변경 후)
 npx prisma studio                   # DB GUI 브라우저
 
-# 공공데이터 최초 동기화 (DB에 데이터 없을 때 필수!)
+# 공공데이터 최초 동기화 — 2026-03-29 완료 (관광지 12,775 / 숙박 3,413 / 축제 1,051 / 캠핑장 3,017)
+# cron 자동화 미구현 — DB 데이터가 오래됐을 때 수동 재실행
 npm run build
 node -e "
   require('dotenv').config();
@@ -323,8 +332,8 @@ docker compose down         # 종료
 
 | 번호 | 심각도 | 내용 |
 |------|--------|------|
-| 1 | 🔴 높음 | DB에 데이터 없음 — sync 잡 수동 실행 필요 (Section 9 참조) |
+| 1 | ✅ 해결 | 공공데이터 최초 동기화 완료 (관광지 12,775 / 숙박 3,413 / 축제 1,051 / 캠핑장 3,017) |
 | 2 | ✅ 해결 | 캠핑 `isAvailable` 랜덤값 → `null` 고정 반환 (실제 예약 API 연동 시 `boolean` 전환 필요) |
-| 3 | 🟡 중간 | userId 인증 없음 — 자유 입력 허용 |
-| 4 | 🟢 낮음 | `TouristSpot.overview` 필드 sync 미구현 |
+| 3 | ✅ 해결 | `SERVICE_API_KEY` Bearer 토큰 인증 미들웨어 적용 (`/api/schedule`, `/api/notification`) |
+| 4 | 🟡 보류 | `TouristSpot.overview`: `detailCommon2` API를 contentId 1건씩 호출해야 함 → sync 시간 대폭 증가. TODO 주석 추가됨 (`syncTourData.ts`). 별도 스크립트 분리 또는 배치 처리 방식 결정 후 구현 예정 |
 | 5 | 🟢 낮음 | TravelPlatform 실제 연동 미구현 |

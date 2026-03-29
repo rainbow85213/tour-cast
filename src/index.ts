@@ -17,6 +17,7 @@ import publicRouter from './routes/public';
 import { startNotificationScheduler } from './services/notificationScheduler';
 import redis from './services/redisClient';
 import { swaggerSpec } from './config/swagger';
+import { requireServiceAuth } from './middlewares/auth';
 
 dotenv.config();
 
@@ -137,15 +138,18 @@ app.use('/api-reference', apiReference({
   theme: 'purple',
 }));
 
+// 공개 조회 엔드포인트 — 인증 불필요
 app.use('/tourist-spots', touristSpotsRouter);
 app.use('/api/spots', spotsRouter);
 app.use('/api/accommodations', accommodationsRouter);
 app.use('/api/festivals', festivalsRouter);
 app.use('/api/campsites', campsitesRouter);
-app.use('/api/schedule', scheduleRouter);
-app.use('/api/notification', notificationRouter);
 app.use('/api/geocode', geocodeRouter);
 app.use('/api/public', publicRouter);
+
+// 인증 필요 엔드포인트 — SERVICE_API_KEY Bearer 토큰 검증
+app.use('/api/schedule', requireServiceAuth, scheduleRouter);
+app.use('/api/notification', requireServiceAuth, notificationRouter);
 
 async function shutdown(signal: string) {
   console.log(`[${signal}] Shutting down...`);

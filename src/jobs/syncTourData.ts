@@ -16,6 +16,16 @@ interface TourItem {
   eventenddate?: string;
 }
 
+// TODO: overview 동기화
+// `areaBasedList2`는 overview 필드를 포함하지 않는다.
+// overview를 저장하려면 contentId 1건당 아래 엔드포인트를 별도 호출해야 한다:
+//   GET /detailCommon2?contentId={id}&defaultYN=Y&overviewYN=Y
+// 관광지 수천 건에 대해 개별 API 호출이 필요하므로 sync 시간이 크게 늘어남.
+// 구현 시 선택지:
+//   1) 별도 스크립트로 분리 (syncTouristSpotsOverview) + 초기 1회만 실행
+//   2) 배치 단위로 rate-limit 걸어서 기존 syncTouristSpots에 통합
+// 결정 후 구현 예정 — 현재 overview는 항상 null로 저장됨.
+
 interface CampItem {
   contentId: string;
   facltNm: string;

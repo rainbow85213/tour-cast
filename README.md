@@ -69,7 +69,8 @@ src/
 │   ├── geocodeService.ts         # 카카오 주소/키워드 검색 + Redis 1시간 캐시
 │   └── publicFacilityService.ts  # HIRA MedGeoInfo API — 병·의원/약국 반경 조회
 ├── middlewares/
-│   └── cache.ts              # Redis 캐시 미들웨어 팩토리 (X-Cache 헤더 포함)
+│   ├── cache.ts              # Redis 캐시 미들웨어 팩토리 (X-Cache 헤더 포함)
+│   └── auth.ts               # SERVICE_API_KEY Bearer 토큰 인증 미들웨어
 ├── utils/
 │   ├── weatherGrid.ts        # WGS84 → 기상청 격자 좌표 변환 (LCC DFS)
 │   └── haversine.ts          # Haversine 거리 계산 (haversineM, haversineKm)
@@ -367,7 +368,7 @@ node -e "
 ### 여행 일정 (Plango 앱 연동)
 
 > Base URL: `https://tour-cast.fly.dev`
-> 인증: 현재 `userId` 쿼리 파라미터로 구분, 추후 Bearer Token 전환 예정
+> 인증: `Authorization: Bearer {SERVICE_API_KEY}` 헤더 필수. `SERVICE_API_KEY` 미설정 시 개발 모드(경고 로그 후 통과).
 
 | Method | Path | 설명 |
 |--------|------|------|
@@ -651,18 +652,18 @@ npx prisma generate
 
 | 항목 | 위치 | 상태 | 설명 |
 |------|------|------|------|
-| 데이터 동기화 자동 실행 | `jobs/syncTourData.ts` | ⚠️ 수동 실행만 가능 | 함수는 구현되어 있으나 `index.ts`에서 cron 등록 없음. DB가 비어 있으면 모든 목록 API가 빈 배열 반환 |
+| 데이터 동기화 자동 실행 | `jobs/syncTourData.ts` | ⚠️ 수동 실행만 가능 | 초기 동기화 완료 (관광지 12,775 / 숙박 3,413 / 축제 1,051 / 캠핑장 3,017). cron 자동 등록은 미구현 |
 | 캠핑장 예약 가능 여부 | `controllers/campController.ts` | ✅ null 반환 | 랜덤값 제거됨. 실제 예약 API 연동 전까지 `isAvailable: null` 고정 반환 |
-| 사용자 인증 | `controllers/scheduleController.ts` | ❌ 없음 | `userId`는 문자열로만 저장. JWT 등 인증 미적용으로 누구나 임의 userId로 일정 CRUD 가능 |
-| `overview` 필드 | `prisma/schema.prisma` | ⚠️ 미사용 | `TouristSpot` 모델에 존재하나 sync 잡에서 저장하지 않음 (관광공사 상세조회 API 별도 호출 필요) |
+| 서비스간 인증 | `middlewares/auth.ts` | ✅ 구현 | `Authorization: Bearer {SERVICE_API_KEY}` 검증. `/api/schedule`, `/api/notification` 보호. `userId` 파라미터는 여전히 요청에서 전달 (Bearer와 별개) |
+| `overview` 필드 | `jobs/syncTourData.ts` | 🟡 보류 | `detailCommon2` API를 contentId 1건씩 호출해야 함 → sync 시간 대폭 증가. 별도 스크립트 분리 방식 결정 후 구현 예정. TODO 주석 추가됨 |
 | TravelPlatform 연동 | 전체 | ❌ 없음 | Laravel TravelPlatform(`https://travel-platform.fly.dev`)과 현재 어떤 연결도 없음 |
 | DB 마이그레이션 (travel_plans) | `prisma/schema.prisma` | ⚠️ 로컬 미적용 | `TravelPlan`·`TravelPlanItem` 테이블은 스키마에 추가됐으나, Fly.io 프로덕션 DB에 `prisma migrate deploy` 실행 필요 |
 
 ### 다음 우선순위 작업 제안
 
 1. **프로덕션 마이그레이션** — Fly.io DB에 `npx prisma migrate deploy` 실행하여 `travel_plans`·`travel_plan_items` 테이블 생성
-2. **사용자 인증 미들웨어** — `Authorization: Bearer {token}` 헤더 기반으로 전환 (`userId` 파라미터 제거)
-3. **데이터 동기화 자동화** — `syncTourData` 함수를 cron(`node-cron`)으로 주기 실행 등록 (예: 매일 새벽 3시)
+2. **데이터 동기화 자동화** — `syncTourData` 함수를 `node-cron`으로 주기 실행 등록 (예: 매일 새벽 3시) — 현재는 수동 1회 실행 상태
+3. **overview 필드 sync** — `detailCommon2` API 연동 방식 결정 후 구현 (별도 스크립트 vs 배치 통합)
 4. **캠핑 예약 실연동** — 실제 예약 API 연동 시 `isAvailable` 필드에 실값 반영 (`null` → `boolean`)
 
 ## 보안
@@ -758,6 +759,7 @@ const { x, y } = latLonToGrid(37.5683, 126.9778); // 서울
 | `ALLOWED_ORIGINS` | CORS 허용 도메인 (쉼표 구분, 미설정 시 전체 허용) |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | Firebase 서비스 계정 JSON (FCM 알림, 미설정 시 알림 기능 비활성) |
 | `PUBLIC_DATA_API_KEY` | 공공데이터포털 인증키 (HIRA 공공시설 API, 미설정 시 공공시설 기능 비활성) |
+| `SERVICE_API_KEY` | 서비스간 인증 키 (TravelPlatform → TourCast 호출 시 `Authorization: Bearer {key}`, 미설정 시 개발 모드로 인증 통과) |
 
 ### 공공데이터포털 API 키 발급 (HIRA 공공시설)
 
