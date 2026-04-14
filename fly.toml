@@ -9,6 +9,9 @@ primary_region = 'nrt'
 [build]
   dockerfile = 'Dockerfile'
 
+[deploy]
+  release_command = 'node node_modules/.bin/prisma migrate deploy'
+
 [env]
   NODE_ENV = 'production'
   PORT = '3000'
@@ -37,4 +40,4 @@ primary_region = 'nrt'
 
 [[vm]]
   size = 'shared-cpu-1x'
-  memory = '256mb'
+  memory = '512mb'
