@@ -98,6 +98,29 @@ model TravelPlan {
   @@map("travel_plans")
 }
 
+// 고양시 통합 장소 데이터
+// contentTypeId: 12=관광지, 14=문화시설, 15=축제/행사, 28=레포츠, 38=쇼핑, 39=음식점
+model GoyangPlace {
+  id            Int       @id @default(autoincrement())
+  contentId     String    @unique
+  contentTypeId Int
+  category      String    // tourist_spot | cultural | festival | sports | shopping | restaurant
+  title         String
+  address       String?
+  mapX          Float?
+  mapY          Float?
+  image         String?
+  tel           String?
+  startDate     DateTime?
+  endDate       DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([category])
+  @@index([contentTypeId])
+  @@map("goyang_places")
+}
+
 model TravelPlanItem {
   id          String     @id @default(cuid())
   planId      String
