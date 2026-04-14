@@ -1,10 +1,12 @@
 import { Router, Request, Response } from 'express';
+import { Prisma } from '../generated/prisma/client';
 import prisma from '../prisma';
 import { cacheMiddleware } from '../middlewares/cache';
 
 const router = Router();
 
-const SIX_HOURS = 6 * 60 * 60;
+const SIX_HOURS    = 6 * 60 * 60;
+const TEN_MINUTES  = 10 * 60;
 const TWENTY_FOUR_HOURS = 24 * 60 * 60;
 
 /**
@@ -13,10 +15,26 @@ const TWENTY_FOUR_HOURS = 24 * 60 * 60;
  *   get:
  *     tags: [Accommodation]
  *     summary: 숙박 목록 조회
- *     description: 숙박 시설을 페이징하여 반환합니다. 결과는 6시간 동안 Redis에 캐싱됩니다.
+ *     description: |
+ *       숙박 시설을 페이징하여 반환합니다.
+ *       keyword/city 없으면 6시간, 검색 시 10분 동안 Redis에 캐싱됩니다.
  *     parameters:
  *       - $ref: '#/components/parameters/PageParam'
  *       - $ref: '#/components/parameters/LimitParam'
+ *       - name: keyword
+ *         in: query
+ *         required: false
+ *         description: title 또는 address 포함 텍스트 검색
+ *         schema:
+ *           type: string
+ *           example: 고양
+ *       - name: city
+ *         in: query
+ *         required: false
+ *         description: address 포함 도시명 검색 (keyword가 없을 때만 적용)
+ *         schema:
+ *           type: string
+ *           example: 고양시
  *     responses:
  *       200:
  *         description: 숙박 목록
@@ -41,20 +59,43 @@ router.get(
   '/',
   cacheMiddleware(
     (req) => {
-      const page  = Math.max(1, parseInt(req.query.page  as string) || 1);
-      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+      const page    = Math.max(1, parseInt(req.query.page  as string) || 1);
+      const limit   = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+      const keyword = (req.query.keyword as string | undefined)?.trim();
+      const city    = (req.query.city    as string | undefined)?.trim();
+
+      if (keyword) return `cache:accommodations:search:${keyword}:${page}:${limit}`;
+      if (city)    return `cache:accommodations:city:${city}:${page}:${limit}`;
       return `cache:accommodations:${page}:${limit}`;
     },
-    SIX_HOURS,
+    (req) => {
+      const keyword = (req.query.keyword as string | undefined)?.trim();
+      const city    = (req.query.city    as string | undefined)?.trim();
+      return keyword || city ? TEN_MINUTES : SIX_HOURS;
+    },
   ),
   async (req: Request, res: Response) => {
-    const page  = Math.max(1, parseInt(req.query.page  as string) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
-    const skip  = (page - 1) * limit;
+    const page    = Math.max(1, parseInt(req.query.page  as string) || 1);
+    const limit   = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+    const skip    = (page - 1) * limit;
+    const keyword = (req.query.keyword as string | undefined)?.trim();
+    const city    = (req.query.city    as string | undefined)?.trim();
+
+    const where: Prisma.AccommodationWhereInput = {};
+
+    if (keyword) {
+      where.OR = [
+        { title:   { contains: keyword, mode: 'insensitive' } },
+        { address: { contains: keyword, mode: 'insensitive' } },
+      ];
+    } else if (city) {
+      where.address = { contains: city, mode: 'insensitive' };
+    }
 
     const [total, items] = await Promise.all([
-      prisma.accommodation.count(),
+      prisma.accommodation.count({ where }),
       prisma.accommodation.findMany({
+        where,
         skip,
         take: limit,
         orderBy: { id: 'asc' },

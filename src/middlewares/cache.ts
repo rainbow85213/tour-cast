@@ -1,9 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import redis from '../services/redisClient';
 
-export function cacheMiddleware(keyFn: (req: Request) => string, ttl: number) {
+export function cacheMiddleware(
+  keyFn: (req: Request) => string,
+  ttl: number | ((req: Request) => number),
+) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const key = keyFn(req);
+    const key     = keyFn(req);
+    const ttlSecs = typeof ttl === 'function' ? ttl(req) : ttl;
 
     try {
       const cached = await redis.get(key);
@@ -21,7 +25,7 @@ export function cacheMiddleware(keyFn: (req: Request) => string, ttl: number) {
     const originalJson = res.json.bind(res);
     res.json = (body: unknown) => {
       try {
-        redis.set(key, JSON.stringify(body), 'EX', ttl).catch(() => {});
+        redis.set(key, JSON.stringify(body), 'EX', ttlSecs).catch(() => {});
       } catch {
         // ignore
       }
